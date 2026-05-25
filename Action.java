@@ -1,37 +1,29 @@
-package g12CP_FinalProject;
+package final_project_2026;
 
-public class Action {
-	private int targetStreet;
-	private int targetAvenue;
-	private String actionPerformed;
-	
-	public Action(int targetStreet, int targetAvenue, String actionPerformed) {
-		this.targetStreet = targetStreet;
-		this.targetAvenue = targetAvenue;
-		this.actionPerformed = actionPerformed;
-	}
 
-	public void setTargetStreet(int street) {
-		this.targetStreet = street;
-	}
-	public void setTargetAvenue(int avenue) {
-		this.targetStreet = avenue;
-	}
-	
-	public void setActionPerformed(String action) {
-		this.actionPerformed= action;
-	}
-	
-	public int getTargetStreet() {
-		return this.targetStreet;
-	}
-	
-	public int getTargetAvenue() {
-		return this.targetAvenue;
-	}
-	
-	public String getActionPerformed() {
-		return this.actionPerformed;
-	}
+/**
+ * Permission slip to retunr to main to decide on movemnt
+ * @author Ayan
+ * @version May 25, 2026
+ */
+public class TurnAction {
+    private int targetStreet;
+    private int targetAvenue;
+    private String intent; 
 
+    public TurnAction(int targetStreet, int targetAvenue, String intent) {
+        this.targetStreet = targetStreet;
+        this.targetAvenue = targetAvenue;
+        this.intent = intent;
+    }
+
+    public int getTargetStreet() { 
+		return targetStreet; 
+	}
+    public int getTargetAvenue() { 
+		return targetAvenue; 
+	}
+    public String getIntent() {
+		return intent; 
+	}
 }
