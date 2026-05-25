@@ -2,6 +2,11 @@ package final_project_2026;
 
 import becker.robots.*;
 
+/**
+ * abstract class to create each robot
+ * @author adam
+ * @version may 24, 2026
+ */
 public abstract class GameRobot extends RobotSE{
 	
 	//protected variables, so the medic, zombie, and survivor can accsess them
@@ -33,7 +38,7 @@ public abstract class GameRobot extends RobotSE{
      * * @param state An array of RobotInfoRecord objects representing the current 
      * locations, speeds, and infection statuses of all players on the grid
      */
-	public abstract void takeTurn(RobotInfoRecord[] state);
+	public abstract TurnAction takeTurn(RobotInfoRecord[] state);
 	
 	/**
      * shared utility method to calculate the distance between this robot's 
