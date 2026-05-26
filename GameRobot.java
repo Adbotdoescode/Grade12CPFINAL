@@ -2,11 +2,6 @@ package final_project_2026;
 
 import becker.robots.*;
 
-/**
- * abstract class to create each robot
- * @author adam
- * @version may 24, 2026
- */
 public abstract class GameRobot extends RobotSE{
 	
 	//protected variables, so the medic, zombie, and survivor can accsess them
@@ -38,7 +33,7 @@ public abstract class GameRobot extends RobotSE{
      * * @param state An array of RobotInfoRecord objects representing the current 
      * locations, speeds, and infection statuses of all players on the grid
      */
-	public abstract TurnAction takeTurn(RobotInfoRecord[] state);
+	public abstract void takeTurn(RobotInfoRecord[] state);
 	
 	/**
      * shared utility method to calculate the distance between this robot's 
@@ -49,7 +44,12 @@ public abstract class GameRobot extends RobotSE{
      * @return the calculated distance to the target as a double
      */
     protected double calculateDistance(int targetStreet, int targetAvenue) {
-        // You will write the math here later to find the distance between this robot and a target
-        return 0.0; 
+    	
+    		// Find the difference between the target coordinates and the robot's current coordinates 
+    		double streetDiff = targetStreet - this.getStreet();
+    		double avenueDiff = targetAvenue - this.getAvenue();
+    		
+    		// Apply the Pythagorean theorem 
+    		return Math.sqrt(Math.pow(streetDiff, 2) + Math.pow(avenueDiff, 2));
     }
 }
