@@ -11,6 +11,9 @@ public class RobotInfoRecord {
 	private int street; 
 	private int avenue;
 	private int speed;
+	private int safeSpotAve;
+	private int safeSpotStreet;
+	private int itemsCarried;
 	private boolean isZombie;
 	
 	//constructor to set data and intialize record
@@ -23,7 +26,7 @@ public class RobotInfoRecord {
 	}
 	
 	//getter methods ----->
-	
+	 
 	/**
 	 * method to return the id of the robot
 	 * @return int robot Id
@@ -62,5 +65,13 @@ public class RobotInfoRecord {
 	 */
 	public boolean getIsZombie() {
 		return this.isZombie;
+	}
+	
+	/**
+	 * method to return amount of items this robot is carrying
+	 * @return int amount of things
+	 */
+	public int getItemsCarried() {
+		return this.itemsCarried;
 	}
 }
