@@ -1,12 +1,19 @@
 package final_project_2026;
 
-
 /**
- * Permission slip to retunr to main to decide on movemnt
- * @author Ayan
+ * Permission slip to return to main to decide on movement.
+ * @author Ayyan
  * @version May 25, 2026
  */
 public class TurnAction {
+    
+    // Constants to prevent typos
+    public static final String MOVE = "MOVE";
+    public static final String PICK_UP = "PICK_UP";
+    public static final String DROP_OFF = "DROP_OFF";
+    public static final String INFECT = "INFECT";
+    public static final String HEAL = "HEAL";
+
     private int targetStreet;
     private int targetAvenue;
     private String intent; 
@@ -18,12 +25,14 @@ public class TurnAction {
     }
 
     public int getTargetStreet() { 
-		return targetStreet; 
-	}
+        return targetStreet; 
+    }
+    
     public int getTargetAvenue() { 
-		return targetAvenue; 
-	}
+        return targetAvenue; 
+    }
+    
     public String getIntent() {
-		return intent; 
-	}
+        return intent; 
+    }
 }
