@@ -59,11 +59,13 @@ public class MedicRobot extends GameRobot {
 		TurnAction response = new TurnAction(0, 0, "");
 		System.out.println(this.currentStrategy);
 		if (currentStrategy == "GATHER") {
+			System.out.println("Medic is gathering");
 			
 		}
 		
 		// If the current strategy is heal, then make a separate array containing only the records of zombies and find the closest zombie using selection sort and return an action object requesting to heal it
 		else if (currentStrategy == "HEAL") {
+			System.out.println("Medic is healing");
 			
 			// For the length of the records array
 			for (int i = 0; i < state.length; i++) { 
@@ -166,7 +168,7 @@ public class MedicRobot extends GameRobot {
 
 		// If the survivor count was greater than zombie count, then healing is not really needed, and in that case, gather, otherwise heal
 		if (survivorCount >= zombieCount) { 
-			currentStrategy = "GATHER";
+			currentStrategy = "HEAL";
 		}
 		
 		else { 
