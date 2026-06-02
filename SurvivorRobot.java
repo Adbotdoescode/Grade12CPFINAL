@@ -1,131 +1,293 @@
 package final_project_2026;
 
-import java.awt.*;
 import becker.robots.*;
+import java.awt.Color;
 
-public class SurvivorRobot extends GameRobot {
+/**
+ * this is the core engine for the zombie outbreak game
+ * handles spawning map generation interaction logic and the main game loop
+ * @author ayyan
+ * @author adam
+ * @author spencer
+ * @version june 2 2026
+ */
+public class OutbreakApp {
+    
+    // static variables so the main loop can read them
+    private static boolean isGameOver = false;
+    private static int targetThingsToWin = 15;
+    private static int currentThingsCollected = 0;
+    
+    // customizable game parameters
+    private static int playerCount = 7;
+    private static int startingZombieCount = 2;
+    private static int maxThings;
+    private static int currentThingsOnBoard = 0;
+    private static final int MEDIC_SPEED = 2;
+    
+    private static GameRobot[] players = new GameRobot[playerCount];
+    private static RobotInfoRecord[] records = new RobotInfoRecord[playerCount];
+    private static City playground = new City();
 
-    private int dodgeAbility;
-    private int baseSpeed;
-    private int maxCapacity;
-    private int currentItems;
-
-    public SurvivorRobot(City c, int st, int ave, Direction dir, int id, int speed, int dodgeAbility, int maxCapacity) {
-        super(c, st, ave, dir, id, speed, false);
-        this.dodgeAbility = dodgeAbility;
-        this.baseSpeed = speed;
-        this.maxCapacity = maxCapacity;
-        this.currentItems = 0;
-        this.setColor(Color.orange);
-    }
-
-    @Override
-    public TurnAction takeTurn(RobotInfoRecord[] state) {
-        // return actual forage logic instead of hardcoded move
-        return forageMode();
-    }
-
-    public void executeApprovedMove(int spaces) {
-        // loop for number of spaces
-        for (int i = 0; i < spaces; i++) {
-            this.move();
+    public static void main(String[] args) { 
+        setupCity();
+        spawnPlayers();
+        
+        int survivorCount = playerCount - startingZombieCount - 1; 
+        maxThings = survivorCount * 2;
+        manageThings();
+        
+        System.out.println("--- outbreak game started ---");
+        
+        while (!isGameOver) { 
+            updateRecords();
+            manageThings();
+            runGameLoop();
+            checkWinConditions();
         }
     }
 
-    private TurnAction forageMode() {
-        // check if survivor is on top of a thing
-        if (this.canPickThing()) {
-            return new TurnAction(this.getStreet(), this.getAvenue(), TurnAction.PICK_UP);
+    private static void setupCity() {
+        // loop to build horizontal walls
+        for (int a = 0; a <= 25; a++) {
+            new Wall(playground, 0, a, Direction.NORTH);
+            new Wall(playground, 14, a, Direction.SOUTH);
         }
-
-        int plannedStreet = this.getStreet();
-        int plannedAvenue = this.getAvenue();
-
-        // check if robot is facing east
-        if (this.getDirection() == Direction.EAST) {
-            // check if robot is not at the end of avenue
-            if (this.getAvenue() < 24) {
-                plannedAvenue++;
-            }
-            // check if robot is at end of avenue
-            else {
-                plannedStreet++;
-            }
+        
+        // loop to build vertical walls
+        for (int s = 0; s <= 14; s++) {
+            new Wall(playground, s, 0, Direction.WEST);
+            new Wall(playground, s, 25, Direction.EAST);
         }
-        // check if robot is facing west
-        else if (this.getDirection() == Direction.WEST) {
-            // check if robot is not at the start of avenue
-            if (this.getAvenue() > 1) {
-                plannedAvenue--;
-            }
-            // check if robot is at start of avenue
-            else {
-                plannedStreet++;
-            }
-        }
-        // check if robot is facing north or south
-        else {
-            plannedAvenue++;
-        }
-
-        return new TurnAction(plannedStreet, plannedAvenue, TurnAction.MOVE);
     }
 
-    private void sortThreats(RobotInfoRecord[] state) {
-        int n = state.length;
+    /**
+     * randomizes locations speeds abilities and instantiates all starting players
+     */
+    private static void spawnPlayers() {
+        // spawn medic first at id 0
+        int mStreet = generateRandomNumber(1, 13);
+        int mAve = generateRandomNumber(1, 24);
+        players[0] = new MedicRobot(playground, mStreet, mAve, Direction.NORTH, 0, MEDIC_SPEED, false);
+        players[0].setColor(Color.WHITE);
+        
+        // loop to spawn zombies
+        for (int i = 1; i <= startingZombieCount; i++) {
+            int zStreet = generateRandomNumber(1, 13);
+            int zAve = generateRandomNumber(1, 24);
+            int zSpeed = generateRandomNumber(1, 4);
+            int zAttack = generateRandomNumber(1, 100);
+            
+            players[i] = new ZombieRobot(playground, zStreet, zAve, Direction.NORTH, i, zSpeed, zAttack);
+            players[i].setColor(Color.GREEN);
+        }
+        
+        // loop to spawn survivors
+        for (int i = startingZombieCount + 1; i < playerCount; i++) {
+            int sStreet = generateRandomNumber(1, 13);
+            int sAve = generateRandomNumber(1, 24);
+            int sSpeed = generateRandomNumber(1, 4);
+            int sEvade = generateRandomNumber(1, 100);
+            
+            players[i] = new SurvivorRobot(playground, sStreet, sAve, Direction.NORTH, i, sSpeed, sEvade, 5);
+            players[i].setColor(Color.ORANGE);
+        }
+    }
 
-        // loop through entire array
-        for (int i = 0; i < n - 1; i++) {
-            int mostDangerousIndex = i;
-
-            // loop through unsorted portion of array
-            for (int j = i + 1; j < n; j++) {
-                // check if the record is not null and the robot being looked at is a zombie
-                if (state[j] != null && state[j].getIsZombie()) {
-                    double distanceJ = calculateDistance(state[j].getStreet(), state[j].getAvenue());
-
-                    double currentMinDistance;
-                    // check if the current most dangerous is a zombie
-                    if (state[mostDangerousIndex] != null && state[mostDangerousIndex].getIsZombie()) {
-                        currentMinDistance = calculateDistance(state[mostDangerousIndex].getStreet(),
-                                state[mostDangerousIndex].getAvenue());
-                    }
-                    // check if current most dangerous is not a zombie
-                    else {
-                        currentMinDistance = Double.MAX_VALUE;
-                    }
-
-                    // check if the new zombie is closer than current closest
-                    if (distanceJ < currentMinDistance) {
-                        mostDangerousIndex = j;
-                    }
-                    // check if two zombies are the same distance away
-                    else if (distanceJ == currentMinDistance) {
-                        // check if the new zombie is faster
-                        if (state[j].getSpeed() > state[mostDangerousIndex].getSpeed()) {
-                            mostDangerousIndex = j;
-                        }
-                    }
-                }
-            }
-
-            // check if a more dangerous zombie was found
-            if (mostDangerousIndex != i) {
-                RobotInfoRecord temp = state[mostDangerousIndex];
-                state[mostDangerousIndex] = state[i];
-                state[i] = temp;
+    private static void manageThings() {
+        // check if things dropped below half
+        if (currentThingsOnBoard < (maxThings / 2)) {
+            int thingsToSpawn = maxThings - currentThingsOnBoard;
+            
+            for (int i = 0; i < thingsToSpawn; i++) {
+                int tStreet = generateRandomNumber(1, 13);
+                int tAve = generateRandomNumber(1, 24);
+                new Thing(playground, tStreet, tAve);
+                currentThingsOnBoard++;
             }
         }
     }
 
-    @Override
-    public RobotInfoRecord generateRecord() {
-        return new RobotInfoRecord(this.getId(), this.getStreet(), this.getAvenue(), this.speed, this.isZombie(),
-                this.currentItems);
+    private static void updateRecords() {
+        // loop to populate records
+        for (int i = 0; i < playerCount; i++) {
+            if (players[i] != null) {
+                records[i] = players[i].generateRecord();
+            } else {
+                records[i] = null;
+            }
+        }
     }
 
-    @Override
-    public int getCombatAbility() {
-        return this.dodgeAbility;
+    private static void runGameLoop() {
+        // loop through each player
+        for (int i = 0; i < playerCount; i++) { 
+            if (players[i] == null) {
+                continue;
+            }
+            
+            TurnAction response = players[i].takeTurn(records);
+            int distanceRequested = Math.abs(response.getTargetStreet() - players[i].getStreet()) 
+                                  + Math.abs(response.getTargetAvenue() - players[i].getAvenue());
+            
+            // check if robot has enough speed to move
+            if (distanceRequested <= players[i].getSpeed()) {
+                executeAction(players[i], response);
+            }
+            
+            records[i] = players[i].generateRecord();
+        }
+    }
+
+    /**
+     * executes physical movement and resolves combat interaction dice rolls
+     * @param bot the robot performing the action
+     * @param action the instructions generated by the robot ai
+     */
+    private static void executeAction(GameRobot bot, TurnAction action) {
+        moveRobot(bot, action.getTargetStreet(), action.getTargetAvenue());
+        String intent = action.getIntent();
+        
+        // check if intent is to pick up thing
+        if (intent.equals(TurnAction.PICK_UP)) {
+            if (bot.canPickThing()) {
+                bot.pickThing();
+                currentThingsOnBoard--;
+                currentThingsCollected++;
+                System.out.println("robot " + bot.getId() + " gathered a thing");
+            }
+        }
+        
+        // check if intent is to infect
+        if (intent.equals(TurnAction.INFECT)) {
+            resolveCombat(bot, action.getTargetBot());
+        }
+        
+        // check if intent is to heal
+        if (intent.equals(TurnAction.HEAL)) {
+            System.out.println("medic healed robot " + action.getTargetBot());
+            swapRobotClass(action.getTargetBot(), false);
+        }
+    }
+
+    /**
+     * calculates quadrants rolls dice and determines if infection succeeds
+     * @param attacker the robot attempting the infection
+     * @param targetId the id of the robot defending
+     */
+    private static void resolveCombat(GameRobot attacker, int targetId) {
+        GameRobot defender = players[targetId];
+        
+        // polymorphic calls completely remove the need for instanceof checks
+        int zAttackAbility = attacker.getCombatAbility();
+        int sEvadeAbility = defender.getCombatAbility();
+        
+        // determine number of dice based on quadrant
+        int zDice = getQuadrant(zAttackAbility);
+        int sDice = getQuadrant(sEvadeAbility);
+        
+        // roll for highest numbers
+        int zRoll = rollHighest(zDice);
+        int sRoll = rollHighest(sDice);
+        
+        // check if zombie beat defender tie goes to defender
+        if (zRoll > sRoll) {
+            System.out.println("zombie won interaction " + zRoll + " vs " + sRoll);
+            swapRobotClass(targetId, true);
+        } else {
+            System.out.println("survivor evaded infection " + sRoll + " vs " + zRoll);
+        }
+    }
+
+    /**
+     * figures out which quadrant the ability falls in to determine dice count
+     * @param ability the stat from 1 to 100
+     * @return int number of dice to roll
+     */
+    private static int getQuadrant(int ability) {
+        if (ability <= 25) { return 1; }
+        if (ability <= 50) { return 2; }
+        if (ability <= 75) { return 3; }
+        return 4;
+    }
+
+    /**
+     * rolls standard d6 dice and returns the highest result
+     * @param numDice the amount of dice to roll
+     * @return int the highest dice roll
+     */
+    private static int rollHighest(int numDice) {
+        int highest = 0;
+        // loop for amount of dice
+        for (int i = 0; i < numDice; i++) {
+            int roll = generateRandomNumber(1, 6);
+            if (roll > highest) {
+                highest = roll;
+            }
+        }
+        return highest;
+    }
+
+    private static void swapRobotClass(int targetId, boolean toZombie) {
+        if (players[targetId] != null) {
+            players[targetId].setTransparency(1.0);
+            
+            int st = players[targetId].getStreet();
+            int ave = players[targetId].getAvenue();
+            Direction dir = players[targetId].getDirection();
+            int speed = generateRandomNumber(1, 4);
+            
+            if (toZombie) {
+                int attack = generateRandomNumber(1, 100);
+                players[targetId] = new ZombieRobot(playground, st, ave, dir, targetId, speed, attack);
+                players[targetId].setColor(Color.GREEN);
+            } else {
+                int evade = generateRandomNumber(1, 100);
+                players[targetId] = new SurvivorRobot(playground, st, ave, dir, targetId, speed, evade, 10);
+                players[targetId].setColor(Color.ORANGE);
+            }
+        }
+    }
+
+    private static void moveRobot(GameRobot bot, int targetStreet, int targetAvenue) {
+        if (bot.getStreet() > targetStreet) {
+            while (bot.getDirection() != Direction.NORTH) { bot.turnLeft(); }
+            while (bot.getStreet() != targetStreet) { bot.move(); }
+        } else if (bot.getStreet() < targetStreet) {
+            while (bot.getDirection() != Direction.SOUTH) { bot.turnLeft(); }
+            while (bot.getStreet() != targetStreet) { bot.move(); }
+        }
+
+        if (bot.getAvenue() > targetAvenue) {
+            while (bot.getDirection() != Direction.WEST) { bot.turnLeft(); }
+            while (bot.getAvenue() != targetAvenue) { bot.move(); }
+        } else if (bot.getAvenue() < targetAvenue) {
+            while (bot.getDirection() != Direction.EAST) { bot.turnLeft(); }
+            while (bot.getAvenue() != targetAvenue) { bot.move(); }
+        }
+    }
+
+    private static void checkWinConditions() {
+        if (currentThingsCollected >= targetThingsToWin) {
+            System.out.println("survivors win they collected " + currentThingsCollected + " things");
+            isGameOver = true;
+            return;
+        }
+        
+        int survivorsLeft = 0;
+        for (int i = 0; i < playerCount; i++) {
+            if (players[i] != null && !players[i].isZombie() && players[i].getId() != 0) {
+                survivorsLeft++;
+            }
+        }
+        
+        if (survivorsLeft == 0) {
+            System.out.println("zombies win all survivors are infected");
+            isGameOver = true;
+        }
+    }
+
+    private static int generateRandomNumber(int min, int max) {
+        return (int) (Math.random() * (max - min + 1)) + min;
     }
 }
