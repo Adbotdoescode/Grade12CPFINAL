@@ -34,7 +34,7 @@ public class OutbreakApp {
         spawnPlayers();
         
         int survivorCount = playerCount - startingZombieCount - 1; 
-        maxThings = survivorCount + 3;
+        maxThings = survivorCount * 2;
         manageThings();
         
         System.out.println("--- outbreak game started ---");
