@@ -29,8 +29,7 @@ public class MedicRobot extends GameRobot {
 		this.currentStrategy = "GATHER";
 		this.setColor(Color.WHITE);
 	}
-	
-	ArrayList<ZombieInfoRecord> zombieRecords = new ArrayList<ZombieInfoRecord>(); 
+
 
 	private int hitPoints;
 
@@ -40,12 +39,11 @@ public class MedicRobot extends GameRobot {
 	 *This method uses the array of records for other robots to help decide weather it is going to heal zombies, gather things or heal itself
 	 *@param state - the array of records containing information about each robot that the medic will use to make its decision
 	 */
-	
+
 	@Override
 	public TurnAction takeTurn(RobotInfoRecord[] state) { 
 		evaluateStrategy(state);
 		TurnAction response = determineResponse(currentStrategy, state);
-//		TurnAction response = new TurnAction(2, 2, "MOVE");
 		return response;
 	}
 
@@ -56,97 +54,111 @@ public class MedicRobot extends GameRobot {
 	 * @return - the response that the medic returns to the controller class 
 	 */
 	private TurnAction determineResponse(String currentStrategy, RobotInfoRecord[] state) {
+
+		ArrayList<ZombieInfoRecord> zombieRecords = new ArrayList<ZombieInfoRecord>(); 
+
 		TurnAction response = new TurnAction(0, 0, "");
 		System.out.println(this.currentStrategy);
 		if (currentStrategy == "GATHER") {
 			System.out.println("Medic is gathering");
-			
+
 		}
-		
+
 		// If the current strategy is heal, then make a separate array containing only the records of zombies and find the closest zombie using selection sort and return an action object requesting to heal it
 		else if (currentStrategy == "HEAL") {
-			System.out.println("Medic is healing");
-			
+//			System.out.println("Medic is healing");
+
 			// For the length of the records array
 			for (int i = 0; i < state.length; i++) { 
-				
+
 				// If the robot is a zombie, then add its record to the zombieRecords array
 				if (state[i].getIsZombie() == true) { 
 					zombieRecords.add(new ZombieInfoRecord(state[i].getId(), state[i].getStreet(), state[i].getAvenue(), state[i].getSpeed(), state[i].getIsZombie(), calculateDistance(this.getStreet(), this.getAvenue() ,state[i].getStreet(), state[i].getAvenue())));
 				}
 			}
-			
-			// Use selection sort to sort the array of zombie records based on the their distance to the medic (least to greatest)
-			// Outer Loop - After loop through and finding the smallest distance record swap it with the index at i and keep repeating this process for the length of zombieRecords
-			for (int i = 0; i < zombieRecords.size(); i++) {
-				int lastIndex = i;
-				double currentMin = zombieRecords.get(i).getDistanceToMedic();
-				
-				// Inner loop 
-				for (int j = i; j < zombieRecords.size(); j++) { 
-					// if the record at j has a closer distance then currentMin, then make it the new minimum and change lastIndex as well
-					if (zombieRecords.get(j).getDistanceToMedic() < currentMin) { 
-						lastIndex = j;
-						currentMin = zombieRecords.get(j).getDistanceToMedic();
+
+			if (zombieRecords.size() > 0) { 
+
+				// Use selection sort to sort the array of zombie records based on the their distance to the medic (least to greatest)
+				// Outer Loop - After loop through and finding the smallest distance record swap it with the index at i and keep repeating this process for the length of zombieRecords
+				for (int i = 0; i < zombieRecords.size(); i++) {
+					int lastIndex = i;
+					double currentMin = zombieRecords.get(i).getDistanceToMedic();
+
+					// Inner loop 
+					for (int j = i; j < zombieRecords.size(); j++) { 
+						// if the record at j has a closer distance then currentMin, then make it the new minimum and change lastIndex as well
+						if (zombieRecords.get(j).getDistanceToMedic() < currentMin) { 
+							lastIndex = j;
+							currentMin = zombieRecords.get(j).getDistanceToMedic();
+						}
 					}
+
+
+					ZombieInfoRecord temp = zombieRecords.get(lastIndex);
+					zombieRecords.set(lastIndex, zombieRecords.get(i));
+					zombieRecords.set(i, temp);
+				}
+				//				System.out.println("THE CHOSEN ZOMBIE TO BE HEALED IS: ID NUMBER --> " + zombieRecords.get(0).getId());
+
+				int targetAvenue = zombieRecords.get(0).getAvenue();
+				int targetStreet = zombieRecords.get(0).getStreet();
+				int streetStepsTotal = zombieRecords.get(0).getStreet() - this.getStreet();
+				int avenueStepsTotal = zombieRecords.get(0).getAvenue() - this.getAvenue();
+				if (streetStepsTotal < 0) {
+					streetStepsTotal *= -1;
+				}
+				if (avenueStepsTotal < 0) {
+					avenueStepsTotal *= -1;
+				}
+				int totalSteps = streetStepsTotal + avenueStepsTotal;
+				int targetBot = zombieRecords.get(0).getId();
+
+				if (totalSteps > this.speed) {
+
+					int difference = totalSteps - speed;
+					int avenueSteps = zombieRecords.get(0).getAvenue() - this.getAvenue();
+					int streetSteps = zombieRecords.get(0).getStreet() - this.getStreet();
+					
+					while (difference > 0) {
+
+						if (avenueSteps > 0) {
+							avenueSteps--;
+							difference--;
+						}
+
+						else if (avenueSteps < 0) {
+							avenueSteps++;
+							difference--;
+						}
+
+						else if (streetSteps > 0) {
+							streetSteps--;
+							difference--;
+						}
+
+						else if (streetSteps < 0) {
+							streetSteps++;
+							difference--;
+						}
+					}
+					
+					targetStreet = this.getStreet() + streetSteps;
+					targetAvenue = this.getAvenue() + avenueSteps;
 				}
 				
-				ZombieInfoRecord temp = zombieRecords.get(lastIndex);
-				zombieRecords.set(lastIndex, zombieRecords.get(i));
-				zombieRecords.set(i, temp);
+
+				response = new TurnAction(targetStreet, targetAvenue, "HEAL");
+				response.setTargetBot(targetBot);
+
 			}
-			
-			int targetAvenue = zombieRecords.get(0).getAvenue();
-			int targetStreet = zombieRecords.get(0).getStreet();
-			int totalSteps = (zombieRecords.get(0).getStreet() - this.getStreet()) + (zombieRecords.get(0).getAvenue() - this.getAvenue());
-			int targetBot = zombieRecords.get(0).getId();
-			for (int m = 0; m < zombieRecords.size(); m++) {
-				System.out.println("Zombie Avenue" + zombieRecords.get(m).getAvenue() + "  Zombie Street" + zombieRecords.get(m).getStreet());
-			}
-			System.out.println(targetAvenue);
-			System.out.println(targetStreet);
-			System.out.println(targetBot);
-			
-			if (totalSteps > this.speed) {
-				
-				int difference = totalSteps - speed;
-				int avenueSteps = this.getAvenue() - zombieRecords.get(0).getAvenue();
-				int streetSteps = this.getStreet() - zombieRecords.get(0).getStreet();
-				
-				while (difference > 0) {
-					
-					if (avenueSteps > 0) {
-						avenueSteps--;
-						difference--;
-					}
-					
-					else if (avenueSteps < 0) {
-						avenueSteps++;
-						difference--;
-					}
-					
-					else if (streetSteps > 0) {
-						streetSteps--;
-						difference--;
-					}
-					
-					else if (streetSteps < 0) {
-						streetSteps++;
-						difference--;
-					}
-				}
-			}
-			
-			response = new TurnAction(targetStreet, targetAvenue, "HEAL");
-			response.setTargetBot(targetBot);
-			
+
 			return response;
 		}
-		
 		return response;
 	}
 
-	
+
 	/**
 	 * This method figures out weather the robot will be healing zombies, gathering items or healing itself
 	 * @param state - The array of records for each player in the game
@@ -170,17 +182,17 @@ public class MedicRobot extends GameRobot {
 		if (survivorCount >= zombieCount) { 
 			currentStrategy = "HEAL";
 		}
-		
+
 		else { 
 			currentStrategy = "HEAL";
-			
+
 		}
 
 	}
 
 	@Override
 	public RobotInfoRecord generateRecord() {
-		return new RobotInfoRecord(this.getId(), this.getStreet(), this.getAvenue(), this.getSpeed(), this.isZombie());
+		return new RobotInfoRecord(this.getId(), this.getStreet(), this.getAvenue(), this.speed, this.isZombie(), 0);
 	}
 
 	/**
@@ -190,7 +202,7 @@ public class MedicRobot extends GameRobot {
 	 * @param targetStreet - the street of the ending point
 	 * @param targetAvenue - the avenue of the ending point
 	 */
-	
+
 	protected double calculateDistance(int startingStreet, int startingAvenue, int targetStreet, int targetAvenue) {
 		int horizontalDistance = targetAvenue - startingAvenue;
 		int verticalDistance = targetStreet - startingStreet;
@@ -203,7 +215,7 @@ public class MedicRobot extends GameRobot {
 		// TODO Auto-generated method stub
 		return 0;
 	}
-	
+
 
 
 }
