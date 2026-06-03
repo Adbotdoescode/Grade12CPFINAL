@@ -2,6 +2,7 @@ package final_project_2026;
 
 import java.awt.Color;
 import java.util.ArrayList;
+import java.util.Random;
 
 import becker.robots.City;
 import becker.robots.Direction;
@@ -31,9 +32,14 @@ public class MedicRobot extends GameRobot {
 	}
 
 
+	Random generator = new Random();
+	
 	private int hitPoints;
 
-	String currentStrategy;
+	private int ability = generator.nextInt(100)+1;
+	
+	private String currentStrategy;
+
 
 	/**
 	 *This method uses the array of records for other robots to help decide weather it is going to heal zombies, gather things or heal itself
@@ -212,8 +218,12 @@ public class MedicRobot extends GameRobot {
 
 	@Override
 	public int getCombatAbility() {
-		// TODO Auto-generated method stub
-		return 0;
+		return this.ability;
+	}
+
+	@Override
+	public String getRole() {
+		return "MEDIC";
 	}
 
 
