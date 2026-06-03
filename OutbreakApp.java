@@ -12,7 +12,7 @@ import java.awt.Color;
  * @version june 2 2026
  */
 public class OutbreakApp {
-    
+	
     // static variables so the main loop can read them
     private static boolean isGameOver = false;
     private static int targetThingsToWin = 15;
@@ -23,7 +23,7 @@ public class OutbreakApp {
     private static int startingZombieCount = 2;
     private static int maxThings;
     private static int currentThingsOnBoard = 0;
-    private static final int MEDIC_SPEED = 2;
+    private static final int MEDIC_SPEED = 6;
     
     private static GameRobot[] players = new GameRobot[playerCount];
     private static RobotInfoRecord[] records = new RobotInfoRecord[playerCount];
@@ -34,7 +34,7 @@ public class OutbreakApp {
         spawnPlayers();
         
         int survivorCount = playerCount - startingZombieCount - 1; 
-        maxThings = survivorCount * 2;
+        maxThings = survivorCount + 3;
         manageThings();
         
         System.out.println("--- outbreak game started ---");
@@ -164,9 +164,9 @@ public class OutbreakApp {
         }
         
         // check if intent is to heal
-        if (intent.equals(TurnAction.HEAL)) {
-            System.out.println("medic healed robot " + action.getTargetBot());
-            swapRobotClass(action.getTargetBot(), false);
+        if (bot.getAvenue() == players[action.getTargetBot()].getAvenue() && bot.getStreet() == players[action.getTargetBot()].getStreet() && intent.equals(TurnAction.HEAL)) {
+            	System.out.println("medic healed robot " + action.getTargetBot());
+            	swapRobotClass(action.getTargetBot(), false);
         }
     }
 
@@ -229,7 +229,6 @@ public class OutbreakApp {
     }
 
     private static void swapRobotClass(int targetId, boolean toZombie) {
-        if (players[targetId] != null) {
             players[targetId].setTransparency(1.0);
             
             int st = players[targetId].getStreet();
@@ -246,7 +245,6 @@ public class OutbreakApp {
                 players[targetId] = new SurvivorRobot(playground, st, ave, dir, targetId, speed, evade, 10);
                 players[targetId].setColor(Color.ORANGE);
             }
-        }
     }
 
     private static void moveRobot(GameRobot bot, int targetStreet, int targetAvenue) {
