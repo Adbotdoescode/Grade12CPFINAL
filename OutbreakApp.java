@@ -166,7 +166,7 @@ public class OutbreakApp {
         // check if intent is to heal
         if (bot.getAvenue() == players[action.getTargetBot()].getAvenue() && bot.getStreet() == players[action.getTargetBot()].getStreet() && intent.equals(TurnAction.HEAL)) {
             	System.out.println("medic healed robot " + action.getTargetBot());
-            	swapRobotClass(action.getTargetBot(), false);
+            	resolveCombat(bot, action.getTargetBot());
         }
     }
 
@@ -191,11 +191,24 @@ public class OutbreakApp {
         int sRoll = rollHighest(sDice);
         
         // check if zombie beat defender tie goes to defender
-        if (zRoll > sRoll) {
-            System.out.println("zombie won interaction " + zRoll + " vs " + sRoll);
-            swapRobotClass(targetId, true);
-        } else {
-            System.out.println("survivor evaded infection " + sRoll + " vs " + zRoll);
+        if (attacker.getRole() == "MEDIC") {
+        	if (zRoll > sRoll) {
+        		System.out.println("Medic won interaction " + zRoll + " vs " + sRoll);
+        		swapRobotClass(targetId, false);
+        	}
+        	else {
+        		System.out.println("Zombie evaded infection " + sRoll + " vs " + zRoll);
+        	}
+        }
+        
+        
+        if (attacker.getRole() == "SURVIVOR") {
+        	if (zRoll > sRoll) {
+        		System.out.println("zombie won interaction " + zRoll + " vs " + sRoll);
+        		swapRobotClass(targetId, true);
+        	} else {
+        		System.out.println("survivor evaded infection " + sRoll + " vs " + zRoll);
+        	}
         }
     }
 
