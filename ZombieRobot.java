@@ -222,4 +222,10 @@ public class ZombieRobot extends GameRobot {
     public int getCombatAbility() {
         return this.attackAbility;
     }
+
+	@Override
+	public String getRole() {
+		// TODO Auto-generated method stub
+		return null;
+	}
 }
