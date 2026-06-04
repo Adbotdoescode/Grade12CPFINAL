@@ -27,6 +27,7 @@ public class RobotInfoRecord {
         this.speed = speed;
         this.isZombie = isZombie;
     }
+    
 	public int getId() {
         return this.id;
     }
