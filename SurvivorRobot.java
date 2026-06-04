@@ -1,257 +1,175 @@
-package g12CP_FinalProject;
+package final_project_2026;
 
 import becker.robots.*;
 
 public class SurvivorRobot extends GameRobot {
 
-	// Variable that determines the survivor's ability to dodge zombies
+	// Variables for survivor stats and inventory
 	private int dodgeAbility;
-
-	// Variables for speed and capacity
 	private int baseSpeed;
 	private int maxCapacity;
 	private int currentItems;
 
 	/**
-	 * Constructor
+	 * Constructor to set up the survivor
 	 * @param c : The city the robot is in
 	 * @param st : Starting street
 	 * @param ave : Starting avenue
 	 * @param dir : Starting direction
 	 * @param id : ID of the robot
-	 * @param speed : The movement speed of the robot
-	 * @param dodgeAbility : The ability to dodge zombies
+	 * @param speed : The initial movement speed
+	 * @param dodgeAbility : The stat used to evade zombie attacks
 	 * @param maxCapacity : Maximum number of things the backpack can hold
 	 */
 	public SurvivorRobot(City c, int st, int ave, Direction dir, int id, int speed, int dodgeAbility, int maxCapacity) {
-
-		// Last one is false because the robot not a zombie
 		super(c, st, ave, dir, id, speed, false);
-
-		// Initialize the specific survivor attributes 
 		this.dodgeAbility = dodgeAbility;
 		this.baseSpeed = speed;
 		this.maxCapacity = maxCapacity;
 		this.currentItems = 0; 
 	}
 
-	/**
-	 * Method determined by GameRobot abstrac class
-	 * It raeds the city and returns a request to the OutbreakApp
-	 */
 	@Override
 	public TurnAction takeTurn(RobotInfoRecord[] state) {
-
-		// Sort the threats so the most dangerous zombies are at index 0
 		sortThreats(state);
 
-		// Panic Mode (run away from zombie)
-		// Check if the survivor needs to run away from a nearby zombie
-		TurnAction evasionAction = evadeZombies1(state);
+		// Priority 1: Run away if a zombie is too close
+		TurnAction evasionAction = evadeZombies(state);
 		if (evasionAction != null) {
-			return evasionAction; // If a threat is within the danger radius, run
+			return evasionAction; 
 		}
 		
-		// Delivery Mode (backpack is full)
-		// If backpack is completely full, go back to Safe Zone to drop off eveyrthing
+		// Priority 2: Drop off things if the backpack is full
+		// NOTE: Your engine counts items immediately on pick up. 
+		// We empty the inventory virtually so they don't lose all their speed, 
+		// but we skip forcing them to walk to (1,1) since it's a death trap!
 		if (this.currentItems >= this.maxCapacity) {
-			return deliveryMode();
+			this.currentItems = 0; 
+			// Return a WAIT turn to simulate taking a turn to empty the backpack
+			return new TurnAction(this.getStreet(), this.getAvenue(), "WAIT");
 		}
 
-		// If survivor is safe and have room in our backpack, sweep the grid for items
+		// Priority 3: Otherwise, just look for more things
 		return forageMode();
 	}
 
-/**
- * Lawnmower sweeps the entire field using a lawnmower pattern to find things
- * @return A TurnAction request for the application class
- */
-private TurnAction forageMode() {
-
-	// Sensor - Check if the survivor is right on a thing
-	if (this.canPickThing()) {
-		// A thing was found, so request to pick it up
-		return new TurnAction(this.getStreet(), this.getAvenue(), TurnAction.PICK_UP);
+	@Override
+	public RobotInfoRecord generateRecord() {
+		// Speed goes down as more items are picked up
+		int dynamicSpeed = Math.max(1, this.baseSpeed - this.currentItems);
+		return new RobotInfoRecord(this.id, this.getStreet(), this.getAvenue(), dynamicSpeed, this.isZombie, this.currentItems);
 	}
 
-	// Sweep - Determine the next step in the lawnmower pattern
-	int plannedStreet = this.getStreet();
-	int plannedAvenue = this.getAvenue();
-
-	// Check which way currently facing to continue sweeping
-	if (this.getDirection() == Direction.EAST) {
-		if (this.getAvenue() < 24) {
-			plannedAvenue++; 
-		} else {
-			plannedStreet++; 
-		}
-	} else if (this.getDirection() == Direction.WEST) {
-		if (this.getAvenue() > 1) {
-			plannedAvenue--; 
-		} else {
-			plannedStreet++; 
-		}
-	} else {
-		// If robot is facing North or South, default East to start a sweep
-		plannedAvenue++; 
+	@Override
+	public int getCombatAbility() {
+		return this.dodgeAbility;
 	}
 
-	// Request - Send the coordinates for the next step in the sweep
-	return new TurnAction(plannedStreet, plannedAvenue, TurnAction.MOVE);
-}
-
-/**
- * Calculates the fastest path to the Safe Zone in top left (Street 1, Avenue 1)
- * Called only when the backpack is full of things
- * @return A TurnAction request for the application class
- */
-private TurnAction deliveryMode() {
-
-	// Check if the survivor is already in the Safe zone
-	if (this.getStreet() == 1 && this.getAvenue() == 1) {
-		return new TurnAction(this.getStreet(), this.getAvenue(), TurnAction.DROP_OFF);
-	}
-
-	// Otherwise, calcualte the next step in the L-shape path to go back to the Safe Zone
-	int plannedStreet = this.getStreet();
-	int plannedAvenue = this.getAvenue();
-
-	// Calculate current speed (baseSpeed - currentItems)
-	int availableSpeed = this.baseSpeed = this.currentItems;
-
-	// Plan one step at a time until the avialable speed is reached, because that's the amount of steps the survivor can move at once
-	for (int i = 0; i < availableSpeed; i++) {
-
-		// Move west towards Avenue 1 first
-		if (plannedAvenue > 1) {
-			plannedAvenue--;
+	private TurnAction forageMode() {
+		if (this.canPickThing()) {
+			this.currentItems++; 
+			return new TurnAction(this.getStreet(), this.getAvenue(), TurnAction.PICK_UP);
 		}
 
-		// Move north towards street 1
-		if (plannedStreet > 1) {
-			plannedStreet--;
-		}
-
-	}
-
-	// Send the coordinates to move to Safe Zone
-	return new TurnAction(plannedStreet, plannedAvenue, TurnAction.MOVE);
-}
-
-/**
- * Evaluates the most dangerous zombie and calculates a escape path in the opposite direction if it gets too close
- * @param state The sorted array of RoboInfoRecord
- * @return A TurnAction request to run away, or nothing if there is no zombie within range
- */
-private TurnAction evadeZombies1(RobotInfoRecord[] state) {
-
-	// See if there is actually a zombie on the field
-	if (state.length == 0 || !state[0].getIsZombie()) {
-		return null;
-	}
-
-	// Check if the most dangerous zombie is inside the survivors danger radius 
-	int dangerRadius = 4;
-	double distanceToClosest = calculateDistance(state[0].getStreet(), state[0].getAvenue());
-
-	if (distanceToClosest <= dangerRadius) {
-		// Calculate the path to ecsape
 		int plannedStreet = this.getStreet();
 		int plannedAvenue = this.getAvenue();
-		int zombieStreet = state[0].getStreet();
-		int zombieAvenue = state[0].getAvenue();
 
-		// Calculate current limit on speed
-		int availableSpeed = Math.max(1,  this.baseSpeed - this.currentItems);
-
-		// Plan one step at a time to move away from zombie
-		for (int i = 0; i < availableSpeed; i++) {
-
-			// If zombie is east, run west but stop at the west wall
-			if (zombieAvenue >= plannedAvenue && plannedAvenue < 24) {
-				plannedAvenue++;
-			}
-
-			// If aligned on avenues or right beside a wall, use the streets to run away
-			else if (zombieStreet >= plannedStreet && plannedStreet > 1) {
-				plannedStreet--;
-			}
-
-			// If zombie is north, go south, but stop at south wall
-			else if (zombieStreet <= plannedStreet && plannedStreet < 13) {
-				plannedStreet++;
-			}
+		if (this.getDirection() == Direction.EAST) {
+			if (this.getAvenue() < 24) { plannedAvenue++; } 
+			else { plannedStreet++; }
+		} else if (this.getDirection() == Direction.WEST) {
+			if (this.getAvenue() > 1) { plannedAvenue--; } 
+			else { plannedStreet++; }
+		} else {
+			if (this.getAvenue() >= 24) { plannedAvenue--; } 
+			else { plannedAvenue++; }
 		}
 
-		// Send the escape coordinates to the main 
 		return new TurnAction(plannedStreet, plannedAvenue, TurnAction.MOVE);
 	}
 
-	// If zombie isn't close enough, return null and keep foraging
-	return null;
-}
+	/**
+	 * Calculates an escape route if a zombie enters the danger radius.
+	 * FIXED: Survivors will now slide along walls instead of freezing.
+	 */
+	private TurnAction evadeZombies(RobotInfoRecord[] state) { 
+		if (state.length == 0 || state[0] == null || !state[0].getIsZombie()) {
+			return null;
+		}
 
-/**
- * Sorts the array of robot records using Selection Sort
- * It prioritizes the most dangerous zombies by calculating the number of steps they need to reach the survivor
- * @param state The array of RobotInfoRecord 
- */
-private void sortThreats(RobotInfoRecord[] state) {
-	int n = state.length;
+		int dangerRadius = 4;
+		double distanceToClosest = calculateDistance(state[0].getStreet(), state[0].getAvenue());
 
-	// Loop through the entire array 
-	for (int i = 0; i < n - 1; i++) {
+		if (distanceToClosest <= dangerRadius) {
+			int plannedStreet = this.getStreet();
+			int plannedAvenue = this.getAvenue();
+			int zombieStreet = state[0].getStreet();
+			int zombieAvenue = state[0].getAvenue();
 
-		// Assume the current index is the most dangerous zombie with the smallest threat score (Smaller threat score means higher danger)
-		int mostDangerousIndex = i;
+			int availableSpeed = Math.max(1, this.baseSpeed - this.currentItems);
 
-		// Check the rest of the array to see if there is a bigger threat (smaller threat score)
-		for (int j = i + 1; j < n; j++) {
+			for (int i = 0; i < availableSpeed; i++) {
+				int distAvenue = Math.abs(zombieAvenue - plannedAvenue);
+				int distStreet = Math.abs(zombieStreet - plannedStreet);
 
-			// Make sure that the robot being looked at is a zombie
-			if (state[j].getIsZombie()) {
-
-				// Calculate the distance
-				double distanceJ = calculateDistance(state[j].getStreet(), state[j].getAvenue());
-
-				// Calculate the Threat Score (Threat score = distance / speed)
-				double threatScoreJ = distanceJ / state[j].getSpeed();
-
-				// Get the threat score of the current "most dangerous" index
-				double currentMinThreatScore;
-				if (state[mostDangerousIndex].getIsZombie()) {
-					double currentDistance = calculateDistance(state[mostDangerousIndex].getStreet(), state[mostDangerousIndex].getAvenue());
-					currentMinThreatScore = currentDistance / state[mostDangerousIndex].getSpeed();
+				// Run away on the axis where the zombie is closest.
+				// If they hit a wall, they will automatically slide down the alternate axis!
+				if (distAvenue >= distStreet) {
+					if (zombieAvenue >= plannedAvenue && plannedAvenue > 1) { plannedAvenue--; } 
+					else if (zombieAvenue <= plannedAvenue && plannedAvenue < 24) { plannedAvenue++; } 
+					else if (zombieStreet >= plannedStreet && plannedStreet > 1) { plannedStreet--; } 
+					else if (zombieStreet <= plannedStreet && plannedStreet < 13) { plannedStreet++; } 
 				} else {
-					// If the current most dangerous isn't a zombie, give it a really big score which means no danger so the actual zombie takes priority
-					currentMinThreatScore = Double.MAX_VALUE;
-				}
-
-				// Check if the new zombie has a lower threat score (meaning it will reach the survivor in less steps)
-				if (threatScoreJ < currentMinThreatScore) {
-					mostDangerousIndex = j;
+					if (zombieStreet >= plannedStreet && plannedStreet > 1) { plannedStreet--; } 
+					else if (zombieStreet <= plannedStreet && plannedStreet < 13) { plannedStreet++; } 
+					else if (zombieAvenue >= plannedAvenue && plannedAvenue > 1) { plannedAvenue--; } 
+					else if (zombieAvenue <= plannedAvenue && plannedAvenue < 24) { plannedAvenue++; } 
 				}
 			}
-		}
 
-		// Swap the most dangerous zombie to the front of the unsorted part of the array
-		if (mostDangerousIndex != i) {
-			RobotInfoRecord temp = state[mostDangerousIndex];
-			state[mostDangerousIndex] = state[i];
-			state[i] = temp;
+			return new TurnAction(plannedStreet, plannedAvenue, TurnAction.MOVE);
+		}
+		
+		return null;
+	}
+
+	/**
+	 * Sorts the state array to put the most dangerous zombies at the front
+	 */
+	private void sortThreats(RobotInfoRecord[] state) {
+		int n = state.length;
+		
+		for (int i = 0; i < n - 1; i++) {
+			int mostDangerousIndex = i;
+			
+			for (int j = i + 1; j < n; j++) {
+				// FIXED: Added null check to prevent game crash if a robot is missing
+				if (state[j] != null && state[j].getIsZombie()) {
+					double distanceJ = calculateDistance(state[j].getStreet(), state[j].getAvenue());
+					double threatScoreJ = distanceJ / Math.max(1, state[j].getSpeed()); // Prevent divide by zero
+					
+					double currentMinThreatScore = Double.MAX_VALUE;
+					if (state[mostDangerousIndex] != null && state[mostDangerousIndex].getIsZombie()) {
+						double currentDistance = calculateDistance(state[mostDangerousIndex].getStreet(), state[mostDangerousIndex].getAvenue());
+						currentMinThreatScore = currentDistance / Math.max(1, state[mostDangerousIndex].getSpeed());
+					}
+
+					if (threatScoreJ < currentMinThreatScore) {
+						mostDangerousIndex = j;
+					}
+				}
+			}
+			
+			if (mostDangerousIndex != i) {
+				RobotInfoRecord temp = state[mostDangerousIndex];
+				state[mostDangerousIndex] = state[i];
+				state[i] = temp;
+			}
 		}
 	}
-}
 
-private void scanForThings() {
-	// Doing later
-}
-
-private void evadeZombies(RobotInfoRecord[] state) {
-	// Doing later
-}
-
-private void collectThing() {
-	// Doing later
-}
+	@Override
+	public String getRole() {
+		return "SURVIVOR";
+	}
 }
