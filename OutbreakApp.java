@@ -12,7 +12,6 @@ import java.awt.Color;
  * @version june 2 2026
  */
 public class OutbreakApp {
-
 	// static variables so the main loop can read them
 	private static boolean isGameOver = false;
 	private static int targetThingsToWin = 15;
