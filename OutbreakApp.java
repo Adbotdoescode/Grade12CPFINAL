@@ -23,7 +23,7 @@ public class OutbreakApp {
     private static int startingZombieCount = 2;
     private static int maxThings;
     private static int currentThingsOnBoard = 0;
-    private static final int MEDIC_SPEED = 6;
+    private static final int MEDIC_SPEED = 1;
     
     private static GameRobot[] players = new GameRobot[playerCount];
     private static RobotInfoRecord[] records = new RobotInfoRecord[playerCount];
@@ -75,7 +75,8 @@ public class OutbreakApp {
         for (int i = 1; i <= startingZombieCount; i++) {
             int zStreet = generateRandomNumber(1, 13);
             int zAve = generateRandomNumber(1, 24);
-            int zSpeed = generateRandomNumber(1, 4);
+            int zSpeed = 5;
+//            int zSpeed = generateRandomNumber(1, 4);
             int zAttack = generateRandomNumber(1, 100);
             
             players[i] = new ZombieRobot(playground, zStreet, zAve, Direction.NORTH, i, zSpeed, zAttack);
@@ -166,6 +167,8 @@ public class OutbreakApp {
         // check if intent is to heal
         if (bot.getAvenue() == players[action.getTargetBot()].getAvenue() && bot.getStreet() == players[action.getTargetBot()].getStreet() && intent.equals(TurnAction.HEAL)) {
             	System.out.println("medic healed robot " + action.getTargetBot());
+            	
+//            	swapRobotClass(action.getTargetBot(), false);
             	resolveCombat(bot, action.getTargetBot());
         }
     }
