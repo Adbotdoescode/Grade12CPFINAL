@@ -82,7 +82,7 @@ public class MedicRobot extends GameRobot {
 					zombieRecords.add(new ZombieInfoRecord(state[i].getId(), state[i].getStreet(), state[i].getAvenue(), state[i].getSpeed(), state[i].getIsZombie(), calculateDistance(this.getStreet(), this.getAvenue() ,state[i].getStreet(), state[i].getAvenue())));
 				}
 			}
-
+				
 			if (zombieRecords.size() > 0) { 
 
 				// Use selection sort to sort the array of zombie records based on the their distance to the medic (least to greatest)
