@@ -2,63 +2,68 @@ package final_project_2026;
 
 import becker.robots.*;
 
-/**
- * abstract class to create each robot
- * @author adam
- * @version may 24, 2026
- */
-public abstract class GameRobot extends RobotSE{
+public abstract class GameRobot extends RobotSE {
 
-	//protected variables, so the medic, zombie, and survivor can accsess them
-	protected int id;
-	protected int speed;
-	protected boolean isZombie;
+    // protected variables so the medic zombie and survivor can access them
+    protected int id;
+    protected int speed;
+    protected boolean isZombie;
+    protected int ability;
 
-	/**
-	 * constructor, taking in additional values
-	 * @param City
-	 * @param int initial street
-	 * @param int initial avenue
-	 * @param Direction initial direction
-	 * @param int id of robot
-	 * @param int speed of robot
-	 * @param boolean intial szombie status of the robot
-	 */
-	public GameRobot(City c, int st, int ave, Direction dir, int id, int speed, boolean isZombie) {
-		super(c, st, ave, dir);
-		this.id = id;
-		this.speed = speed;
-		this.isZombie = isZombie;
-	}
+    /**
+     * constructor to initialize common robot traits
+     * @param c the city
+     * @param st starting street
+     * @param ave starting avenue
+     * @param dir starting direction
+     * @param id robot id
+     * @param speed movement speed
+     * @param isZombie true if zombie false if not
+     */
+    public GameRobot(City c, int st, int ave, Direction dir, int id, int speed, boolean isZombie) {
+        super(c, st, ave, dir);
+        this.id = id;
+        this.speed = speed;
+        this.isZombie = isZombie;
+    }
 
-	/**
-	 * the main action method that dictates what this robot does on its turn
-	 * every child class (ZombieRobot, SurvivorRobot, MedicRobot) MUST override 
-	 * this method to implement its own unique AI and movement strategy
-	 * * @param state An array of RobotInfoRecord objects representing the current 
-	 * locations, speeds, and infection statuses of all players on the grid
-	 */
-	public abstract TurnAction takeTurn(RobotInfoRecord[] state);
+    public abstract TurnAction takeTurn(RobotInfoRecord[] state);
 
-	/**
-	 * shared utility method to calculate the distance between this robot's 
-	 * current location and a specific target location
-	 * child classes can call this to evaluate targets
-	 * * @param int  the street of the target location.
-	 * @param int the avenue of the target location.
-	 * @return the calculated distance to the target as a double
-	 */
-	protected double calculateDistance(int targetStreet, int targetAvenue) {
-		return 0.0; 
-	}
 
-	public int getId() {
-		return this.id; 
-	}
-	public double getSpeed() { 
-		return this.speed; 
-	}
-	public boolean isZombie() { 
-		return this.isZombie; 
-	}
+    /**
+     * calculates pythagorean distance to a target
+     * @param targetStreet street of target
+     * @param targetAvenue avenue of target
+     * @return double distance to target
+     */
+    protected double calculateDistance(int targetStreet, int targetAvenue) {
+        int horizontalDistance = targetAvenue - this.getAvenue();
+        int verticalDistance = targetStreet - this.getStreet();
+        double distance = Math.sqrt((horizontalDistance * horizontalDistance) + (verticalDistance * verticalDistance));
+        return distance; 
+    }
+
+    public int getId() {
+        return this.id; 
+    }
+    
+    public double getSpeed() { 
+        return this.speed; 
+    }
+    
+    public boolean isZombie() { 
+        return this.isZombie; 
+    }
+
+    /**
+     * gets the combat stat of the robot for dice rolls
+     * @return int combat ability value
+     */
+    public abstract int getCombatAbility();
+    
+    /**
+     * gets the role of the robot for turn order and safe zone logic
+     * @return string the role of the robot
+     */
+    public abstract String getRole();
 }
