@@ -25,16 +25,19 @@ public class OutbreakApp {
 	private static int currentThingsOnBoard = 0;
 	private static final int MEDIC_SPEED = 2;
 
+	private static final Random rand = new Random();
+
+	
 	private static GameRobot[] players = new GameRobot[playerCount];
 	private static RobotInfoRecord[] records = new RobotInfoRecord[playerCount];
-	private static City playground = new City();
+	private static City playground = new City(15, 26);
 
 	public static void main(String[] args) { 
 		setupCity();
 		spawnPlayers();
 
 		int survivorCount = playerCount - startingZombieCount - 1; 
-		maxThings = survivorCount * 2;
+		maxThings = survivorCount * 3;
 		manageThings();
 
 		System.out.println("--- outbreak game started ---");
@@ -347,8 +350,6 @@ public class OutbreakApp {
 	}
 	
 
-	// Add this to your static variables at the top of the class:
-	private static final Random rand = new Random();
 
 	// Update your method:
 	private static int generateRandomNumber(int min, int max) {
