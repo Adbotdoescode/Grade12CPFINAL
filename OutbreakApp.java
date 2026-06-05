@@ -19,11 +19,11 @@ public class OutbreakApp {
 	private static int currentThingsCollected = 0;
 
 	// customizable game parameters
-	private static int playerCount = 7;
-	private static int startingZombieCount = 2;
+	private static int playerCount = 12;
+	private static int startingZombieCount = 5;
 	private static int maxThings;
 	private static int currentThingsOnBoard = 0;
-	private static final int MEDIC_SPEED = 1;
+	private static final int MEDIC_SPEED = 2;
 
 	private static GameRobot[] players = new GameRobot[playerCount];
 	private static RobotInfoRecord[] records = new RobotInfoRecord[playerCount];
@@ -34,7 +34,7 @@ public class OutbreakApp {
 		spawnPlayers();
 
 		int survivorCount = playerCount - startingZombieCount - 1; 
-		maxThings = survivorCount + 3;
+		maxThings = survivorCount * 2;
 		manageThings();
 
 		System.out.println("--- outbreak game started ---");
@@ -78,7 +78,7 @@ public class OutbreakApp {
 			int zSpeed = generateRandomNumber(1, 4);
 			int zAttack = generateRandomNumber(1, 100);
 
-			players[i] = new ZombieRobot(playground, zStreet, zAve, Direction.NORTH, i, zSpeed, zAttack);
+			players[i] = new ZombieRobot(playground, zStreet, zAve, Direction.NORTH, i, zSpeed, zAttack, playerCount);
 			players[i].setColor(Color.GREEN);
 		}
 
@@ -112,7 +112,7 @@ public class OutbreakApp {
 		// loop to populate records
 		for (int i = 0; i < playerCount; i++) {
 			if (players[i] != null) {
-				records[i] = players[i].generateRecord();
+				records[i] = generateRecord(players[i]);
 			}
 			else {
 				records[i] = null;
@@ -136,7 +136,7 @@ public class OutbreakApp {
 				executeAction(players[i], response);
 			}
 
-			records[i] = players[i].generateRecord();
+			records[i] = generateRecord(players[i]);
 		}
 	}
 
@@ -192,7 +192,7 @@ public class OutbreakApp {
 		int sRoll = rollHighest(sDice);
 
 		// check if zombie beat defender tie goes to defender
-		if (attacker.getRole() == "MEDIC") {
+		if (attacker.getRole().equals("MEDIC")) {
 			if (zRoll > sRoll) {
 				System.out.println("Medic won interaction " + zRoll + " vs " + sRoll);
 				swapRobotClass(targetId, false);
@@ -203,7 +203,7 @@ public class OutbreakApp {
 		}
 
 
-		if (attacker.getRole() == "SURVIVOR") {
+		if (attacker.getRole().equals("ZOMBIE")) {
 			if (zRoll > sRoll) {
 				System.out.println("zombie won interaction " + zRoll + " vs " + sRoll);
 				swapRobotClass(targetId, true);
@@ -219,9 +219,15 @@ public class OutbreakApp {
 	 * @return int number of dice to roll
 	 */
 	private static int getQuadrant(int ability) {
-		if (ability <= 25) { return 1; }
-		if (ability <= 50) { return 2; }
-		if (ability <= 75) { return 3; }
+		if (ability <= 25) { 
+			return 1; 
+		}
+		if (ability <= 50) { 
+			return 2; 
+		}
+		if (ability <= 75) { 
+			return 3; 
+		}
 		return 4;
 	}
 
@@ -252,9 +258,10 @@ public class OutbreakApp {
 
 		if (toZombie) {
 			int attack = generateRandomNumber(1, 100);
-			players[targetId] = new ZombieRobot(playground, st, ave, dir, targetId, speed, attack);
+			players[targetId] = new ZombieRobot(playground, st, ave, dir, targetId, speed, attack, playerCount);
 			players[targetId].setColor(Color.GREEN);
-		} else {
+		} 
+		else {
 			int evade = generateRandomNumber(1, 100);
 			players[targetId] = new SurvivorRobot(playground, st, ave, dir, targetId, speed, evade, 10);
 			players[targetId].setColor(Color.ORANGE);
@@ -263,19 +270,42 @@ public class OutbreakApp {
 
 	private static void moveRobot(GameRobot bot, int targetStreet, int targetAvenue) {
 		if (bot.getStreet() > targetStreet) {
-			while (bot.getDirection() != Direction.NORTH) { bot.turnLeft(); }
-			while (bot.getStreet() != targetStreet) { bot.move(); }
-		} else if (bot.getStreet() < targetStreet) {
-			while (bot.getDirection() != Direction.SOUTH) { bot.turnLeft(); }
-			while (bot.getStreet() != targetStreet) { bot.move(); }
+			while (bot.getDirection() != Direction.NORTH) { 
+				bot.turnLeft(); 
+			}
+			while (bot.getStreet() != targetStreet) { 
+				bot.move(); 
+			}
+		} 
+		
+		else if (bot.getStreet() < targetStreet) {
+			while (bot.getDirection() != Direction.SOUTH) { 
+				bot.turnLeft(); 
+			}
+			
+			while (bot.getStreet() != targetStreet) { 
+				bot.move(); 
+			}
 		}
 
 		if (bot.getAvenue() > targetAvenue) {
-			while (bot.getDirection() != Direction.WEST) { bot.turnLeft(); }
-			while (bot.getAvenue() != targetAvenue) { bot.move(); }
-		} else if (bot.getAvenue() < targetAvenue) {
-			while (bot.getDirection() != Direction.EAST) { bot.turnLeft(); }
-			while (bot.getAvenue() != targetAvenue) { bot.move(); }
+			while (bot.getDirection() != Direction.WEST) { 
+				
+				bot.turnLeft(); 
+			}
+			
+			while (bot.getAvenue() != targetAvenue) { 
+				bot.move(); 
+			}
+		} 
+		else if (bot.getAvenue() < targetAvenue) {
+			while (bot.getDirection() != Direction.EAST) { 
+				bot.turnLeft(); 
+			}
+			
+			while (bot.getAvenue() != targetAvenue) { 
+				bot.move(); 
+			}
 		}
 	}
 
@@ -299,7 +329,29 @@ public class OutbreakApp {
 		}
 	}
 
+	/**
+	 * generates records to update the game state when needed
+	 * @param GameRobot to be updated
+	 * @return robot info record with new updates, for survivor dynamic speed which changes with amount of items carried
+	 * @author Spencer
+	 */
+	private static RobotInfoRecord generateRecord(GameRobot bot) {
+		if(!bot.isZombie) {
+			int dynamicSurvivorSpeed = (int) Math.max(1, bot.getSpeed() - bot.countThingsInBackpack());
+			return new RobotInfoRecord(bot.getId(), bot.getStreet(), bot.getAvenue(), dynamicSurvivorSpeed, bot.isZombie(), 0);
+		}
+		else {
+			return new RobotInfoRecord(bot.getId(), bot.getStreet(), bot.getAvenue(), (int) bot.getSpeed(), bot.isZombie(), 0);
+		}
+		
+	}
+	
+
+	// Add this to your static variables at the top of the class:
+	private static final Random rand = new Random();
+
+	// Update your method:
 	private static int generateRandomNumber(int min, int max) {
-		return new Random().nextInt(min, max+1);
+		return rand.nextInt(max - min + 1) + min;
 	}
 }
