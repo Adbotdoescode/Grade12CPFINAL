@@ -2,6 +2,7 @@ package final_project_2026;
 
 import java.awt.Color;
 import java.util.ArrayList;
+import java.util.Random;
 
 import becker.robots.City;
 import becker.robots.Direction;
@@ -31,9 +32,14 @@ public class MedicRobot extends GameRobot {
 	}
 
 
+	Random generator = new Random();
+	
 	private int hitPoints;
 
-	String currentStrategy;
+	private int ability = generator.nextInt(100)+1;
+	
+	private String currentStrategy;
+
 
 	/**
 	 *This method uses the array of records for other robots to help decide weather it is going to heal zombies, gather things or heal itself
@@ -76,7 +82,7 @@ public class MedicRobot extends GameRobot {
 					zombieRecords.add(new ZombieInfoRecord(state[i].getId(), state[i].getStreet(), state[i].getAvenue(), state[i].getSpeed(), state[i].getIsZombie(), calculateDistance(this.getStreet(), this.getAvenue() ,state[i].getStreet(), state[i].getAvenue())));
 				}
 			}
-
+				
 			if (zombieRecords.size() > 0) { 
 
 				// Use selection sort to sort the array of zombie records based on the their distance to the medic (least to greatest)
@@ -103,22 +109,14 @@ public class MedicRobot extends GameRobot {
 
 				int targetAvenue = zombieRecords.get(0).getAvenue();
 				int targetStreet = zombieRecords.get(0).getStreet();
-				int streetStepsTotal = zombieRecords.get(0).getStreet() - this.getStreet();
-				int avenueStepsTotal = zombieRecords.get(0).getAvenue() - this.getAvenue();
-				if (streetStepsTotal < 0) {
-					streetStepsTotal *= -1;
-				}
-				if (avenueStepsTotal < 0) {
-					avenueStepsTotal *= -1;
-				}
-				int totalSteps = streetStepsTotal + avenueStepsTotal;
+				int totalSteps = Math.abs(zombieRecords.get(0).getStreet() - this.getStreet()) + Math.abs(zombieRecords.get(0).getAvenue() - this.getAvenue());
 				int targetBot = zombieRecords.get(0).getId();
+				int difference = totalSteps - speed;
+				int avenueSteps = zombieRecords.get(0).getAvenue() - this.getAvenue();
+				int streetSteps = zombieRecords.get(0).getStreet() - this.getStreet();
 
 				if (totalSteps > this.speed) {
 
-					int difference = totalSteps - speed;
-					int avenueSteps = zombieRecords.get(0).getAvenue() - this.getAvenue();
-					int streetSteps = zombieRecords.get(0).getStreet() - this.getStreet();
 					
 					while (difference > 0) {
 
@@ -190,10 +188,10 @@ public class MedicRobot extends GameRobot {
 
 	}
 
-	@Override
-	public RobotInfoRecord generateRecord() {
-		return new RobotInfoRecord(this.getId(), this.getStreet(), this.getAvenue(), this.speed, this.isZombie(), 0);
-	}
+//	@Override
+//	public RobotInfoRecord generateRecord() {
+//		return new RobotInfoRecord(this.getId(), this.getStreet(), this.getAvenue(), this.speed, this.isZombie(), 0);
+//	}
 
 	/**
 	 * This method calculates the direct distance from one point to another using pythagorean theorem
@@ -212,8 +210,12 @@ public class MedicRobot extends GameRobot {
 
 	@Override
 	public int getCombatAbility() {
-		// TODO Auto-generated method stub
-		return 0;
+		return this.ability;
+	}
+
+	@Override
+	public String getRole() {
+		return "MEDIC";
 	}
 
 
