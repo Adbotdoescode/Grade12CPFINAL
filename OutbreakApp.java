@@ -120,24 +120,31 @@ public class OutbreakApp {
 	}
 
 	private static void runGameLoop() {
-		// loop through each player
-		for (int i = 0; i < playerCount; i++) { 
-			if (players[i] == null) {
-				continue;
-			}
-
-			TurnAction response = players[i].takeTurn(records);
-			int distanceRequested = Math.abs(response.getTargetStreet() - players[i].getStreet()) 
-					+ Math.abs(response.getTargetAvenue() - players[i].getAvenue());
-
-			// check if robot has enough speed to move
-			if (distanceRequested <= players[i].getSpeed()) {
-				executeAction(players[i], response);
-			}
-
-			records[i] = generateRecord(players[i]);
-		}
-	}
+        // loop through each player
+        for (int i = 0; i < playerCount; i++) { 
+            if (players[i] == null) {
+                continue;
+            }
+            
+            TurnAction response = players[i].takeTurn(records);
+            int distanceRequested = Math.abs(response.getTargetStreet() - players[i].getStreet()) 
+                                  + Math.abs(response.getTargetAvenue() - players[i].getAvenue());
+            
+            // check to make sure the robot doesn't walk into a wall
+            boolean validSpeed = distanceRequested <= players[i].getSpeed();
+            boolean validBounds = response.getTargetStreet() >= 1 && response.getTargetStreet() <= 13 &&
+                                  response.getTargetAvenue() >= 1 && response.getTargetAvenue() <= 24;
+            
+            // check if robot has enough speed to move AND the move is within the map limits
+            if (validSpeed && validBounds) {
+                executeAction(players[i], response);
+            } else {
+                System.out.println("Robot " + players[i].getId() + " requested an invalid move and forfeited its turn.");
+            }
+            
+            records[i] = players[i].generateRecord();
+        }
+    }
 
 	/**
 	 * executes physical movement and resolves combat interaction dice rolls
