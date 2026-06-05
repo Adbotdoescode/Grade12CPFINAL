@@ -19,27 +19,22 @@ public class ZombieRobot extends GameRobot {
      * @param id int robot id
      * @param speed int speed of the robot
      * @param attackAbility int combat strength from 1 to 100
+     * @param totalPlayers int the maximum amount of players in the game (for memory sizing)
      */
-    public ZombieRobot(City c, int st, int ave, Direction dir, int id, int speed, int attackAbility) {
+    public ZombieRobot(City c, int st, int ave, Direction dir, int id, int speed, int attackAbility, int totalPlayers) {
         super(c, st, ave, dir, id, speed, true);
         this.setColor(Color.GREEN);
         this.attackAbility = attackAbility;
-        this.estimatedEvadeStats = new int[50]; 
         this.currentTargetId = -1;
         this.lastIntent = "";
         
+        // FIX: Array scales perfectly with the game size to prevent out-of-bounds crashes
+        this.estimatedEvadeStats = new int[totalPlayers]; 
+        
         // initialize all estimates to a baseline quadrant 1 guess
-        for(int i = 0; i < 50; i++) {
+        for(int i = 0; i < totalPlayers; i++) {
             this.estimatedEvadeStats[i] = 25;
         }
-    }
-
-    /**
-     * gets the attack ability of the zombie for combat resolution
-     * @return int attack ability
-     */
-    public int getAttackAbility() {
-        return this.attackAbility;
     }
 
     /**
@@ -78,7 +73,6 @@ public class ZombieRobot extends GameRobot {
         int index = 0;
         // loop through state array to populate targets
         for(int i = 0; i < state.length; i++) {
-            // check if robot is not a zombie and not self
             if(state[i] != null && !state[i].getIsZombie() && state[i].getId() != this.id) {
                 targets[index] = state[i];
                 index++;
@@ -99,40 +93,40 @@ public class ZombieRobot extends GameRobot {
             RobotInfoRecord bestTarget = targets[0];
             this.currentTargetId = bestTarget.getId();
 
-            double distanceToBest = calculateDistance(bestTarget.getStreet(), bestTarget.getAvenue());
+            // using Manhattan distance to match how the engine processes distance (grid instaed of straight line euclidean)
+            int distanceToBest = calculateManhattanDistance(this.getStreet(), this.getAvenue(), bestTarget.getStreet(), bestTarget.getAvenue());
 
-            // check if target is close enough to infect
-            if(distanceToBest <= 1.0) {
+            // if the target is within the zombie's speed limit
+            if(distanceToBest <= this.getSpeed()) {
                 TurnAction action = new TurnAction(bestTarget.getStreet(), bestTarget.getAvenue(), TurnAction.INFECT);
                 action.setTargetBot(this.currentTargetId);
                 return action;
             }
-            // check if target is far away
+            // If target is out of range, sprint towards them using all available speed
             else {
                 int nextStreet = this.getStreet();
                 int nextAvenue = this.getAvenue();
+                int speedLeft = (int) this.getSpeed();
 
-                // check if vertical distance is greater than horizontal
-                if(Math.abs(bestTarget.getStreet() - this.getStreet()) > Math.abs(bestTarget.getAvenue() - this.getAvenue())) {
-                    // check if target is south
-                    if(bestTarget.getStreet() > this.getStreet()) {
-                        nextStreet++;
+                // Loop to consume all movement points to get as close as possible
+                while (speedLeft > 0 && calculateManhattanDistance(nextStreet, nextAvenue, bestTarget.getStreet(), bestTarget.getAvenue()) > 0) {
+                    if(Math.abs(bestTarget.getStreet() - nextStreet) > Math.abs(bestTarget.getAvenue() - nextAvenue)) {
+                        if(bestTarget.getStreet() > nextStreet) { 
+                        	nextStreet++; 
+                        } 
+                        else { 
+                        	nextStreet--; 
+                        }
                     } 
-                    // check if target is north
-                    else { 
-                        nextStreet--;
-                    }
-                } 
-                // check if horizontal distance is greater or equal
-                else {
-                    // check if target is east
-                    if(bestTarget.getAvenue() > this.getAvenue()) {
-                        nextAvenue++;
-                    } 
-                    // check if target is west
                     else {
-                        nextAvenue--;
+                        if(bestTarget.getAvenue() > nextAvenue) { 
+                        	nextAvenue++; 
+                        } 
+                        else { 
+                        	nextAvenue--; 
+                        }
                     }
+                    speedLeft--;
                 }
                 
                 return new TurnAction(nextStreet, nextAvenue, TurnAction.MOVE);
@@ -168,7 +162,7 @@ public class ZombieRobot extends GameRobot {
      * @return double the calculated threat score
      */
     private double calculateTargetScore(RobotInfoRecord target) {
-        double distance = calculateDistance(target.getStreet(), target.getAvenue());
+        int distance = calculateManhattanDistance(this.getStreet(), this.getAvenue(), target.getStreet(), target.getAvenue());
         int itemsCarried = target.getItemsCarried();
         
         // fetch our current guess of their evade ability
@@ -189,7 +183,6 @@ public class ZombieRobot extends GameRobot {
 
             // loop through state array to find target
             for(int i = 0; i < state.length; i++) {
-                // check if target is found and still a survivor
                 if(state[i] != null && state[i].getId() == currentTargetId && !state[i].getIsZombie()) {
                     targetStillAlive = true;
                     break; 
@@ -205,27 +198,27 @@ public class ZombieRobot extends GameRobot {
                 if (estimatedEvadeStats[currentTargetId] > 100) {
                     estimatedEvadeStats[currentTargetId] = 100;
                 }
-            } 
-            // check if target was successfully infected
-            else {
+            } else {
                 currentTargetId = -1;
             }
         }
     }
-
-    @Override
-    public RobotInfoRecord generateRecord() {
-        return new RobotInfoRecord(this.getId(), this.getStreet(), this.getAvenue(), (int) this.getSpeed(), this.isZombie(), 0);
+    
+    /**
+     * Internal helper to calculate grid distance matching the OutbreakApp engine
+     */
+    private int calculateManhattanDistance(int st1, int ave1, int st2, int ave2) {
+        return Math.abs(st1 - st2) + Math.abs(ave1 - ave2);
     }
+
 
     @Override
     public int getCombatAbility() {
         return this.attackAbility;
     }
-
-	@Override
-	public String getRole() {
-		// TODO Auto-generated method stub
-		return null;
-	}
+    
+    @Override
+    public String getRole() {
+        return "ZOMBIE";
+    }
 }
