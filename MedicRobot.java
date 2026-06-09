@@ -26,7 +26,6 @@ public class MedicRobot extends GameRobot {
 	 */
 	public MedicRobot(City c, int st, int ave, Direction dir, int id, int speed, boolean isZombie) {
 		super(c, st, ave, dir, id, speed, isZombie);
-		this.hitPoints = 3;
 		this.currentStrategy = "GATHER";
 		this.setColor(Color.WHITE);
 	}
@@ -46,10 +45,9 @@ public class MedicRobot extends GameRobot {
 	 *@param state - the array of records containing information about each robot that the medic will use to make its decision
 	 */
 
-	@Override
-	public TurnAction takeTurn(RobotInfoRecord[] state) { 
+	public TurnAction takeTurn(RobotInfoRecord[] state, ArrayList<ZombieInfoRecord> zombieRecords) { 
 		evaluateStrategy(state);
-		TurnAction response = determineResponse(currentStrategy, state);
+		TurnAction response = determineResponse(currentStrategy, state, zombieRecords);
 		return response;
 	}
 
@@ -59,9 +57,10 @@ public class MedicRobot extends GameRobot {
 	 * @param state - the list of records providing information on all the other robots
 	 * @return - the response that the medic returns to the controller class 
 	 */
-	private TurnAction determineResponse(String currentStrategy, RobotInfoRecord[] state) {
-
-		ArrayList<ZombieInfoRecord> zombieRecords = new ArrayList<ZombieInfoRecord>(); 
+	private TurnAction determineResponse(String currentStrategy, RobotInfoRecord[] state, ArrayList<ZombieInfoRecord> zombieRecords) {
+		
+		double maxSpeed = 10;
+		double maxDistance = Math.sqrt((10*10)+(10*10));
 
 		TurnAction response = new TurnAction(0, 0, "");
 		System.out.println(this.currentStrategy);
@@ -72,6 +71,12 @@ public class MedicRobot extends GameRobot {
 
 		// If the current strategy is heal, then make a separate array containing only the records of zombies and find the closest zombie using selection sort and return an action object requesting to heal it
 		else if (currentStrategy == "HEAL") {
+			
+			if (this.canPickThing() == true) { 
+				this.pickThing();
+				response = new TurnAction(this.getStreet(), this.getAvenue(), "HEAL_SELF");
+				return response;
+			}
 //			System.out.println("Medic is healing");
 
 			// For the length of the records array
@@ -82,6 +87,10 @@ public class MedicRobot extends GameRobot {
 					zombieRecords.add(new ZombieInfoRecord(state[i].getId(), state[i].getStreet(), state[i].getAvenue(), state[i].getSpeed(), state[i].getIsZombie(), calculateDistance(this.getStreet(), this.getAvenue() ,state[i].getStreet(), state[i].getAvenue())));
 				}
 			}
+			
+			for (int i = 0; i < zombieRecords.size(); i++) {
+				zombieRecords.get(i).setTotalPreferability(calculatePreferability(calculateDistance(this.getStreet(), this.getAvenue() ,zombieRecords.get(i).getStreet(), zombieRecords.get(i).getAvenue()), zombieRecords.get(i).getSpeed(), maxDistance, maxSpeed, zombieRecords.get(i).getDodgeAbility()));
+			}
 				
 			if (zombieRecords.size() > 0) { 
 
@@ -89,14 +98,14 @@ public class MedicRobot extends GameRobot {
 				// Outer Loop - After loop through and finding the smallest distance record swap it with the index at i and keep repeating this process for the length of zombieRecords
 				for (int i = 0; i < zombieRecords.size(); i++) {
 					int lastIndex = i;
-					double currentMin = zombieRecords.get(i).getDistanceToMedic();
+					double currentMax = zombieRecords.get(i).getTotalPreferability();
 
 					// Inner loop 
 					for (int j = i; j < zombieRecords.size(); j++) { 
 						// if the record at j has a closer distance then currentMin, then make it the new minimum and change lastIndex as well
-						if (zombieRecords.get(j).getDistanceToMedic() < currentMin) { 
+						if (zombieRecords.get(j).getTotalPreferability() < currentMax) { 
 							lastIndex = j;
-							currentMin = zombieRecords.get(j).getDistanceToMedic();
+							currentMax = zombieRecords.get(j).getTotalPreferability();
 						}
 					}
 
@@ -105,7 +114,12 @@ public class MedicRobot extends GameRobot {
 					zombieRecords.set(lastIndex, zombieRecords.get(i));
 					zombieRecords.set(i, temp);
 				}
-				//				System.out.println("THE CHOSEN ZOMBIE TO BE HEALED IS: ID NUMBER --> " + zombieRecords.get(0).getId());
+				
+				for (int i = 0; i < zombieRecords.size(); i++ ) { 
+					System.out.println("Zombie ID: " + zombieRecords.get(i).getId() + "TOTAL PREFERABILITY: " + zombieRecords.get(i).getTotalPreferability() + " dodgeAbility: " + zombieRecords.get(i).getDodgeAbility());
+				}
+				
+								System.out.println("THE CHOSEN ZOMBIE TO BE HEALED IS: ID NUMBER --> " + zombieRecords.get(0).getId());
 
 				int targetAvenue = zombieRecords.get(0).getAvenue();
 				int targetStreet = zombieRecords.get(0).getStreet();
@@ -195,6 +209,30 @@ public class MedicRobot extends GameRobot {
 		}
 
 	}
+	
+	/**
+	 * This method calculates the total preferability which combines the speed and distanceToMedic attributes of the zombie. Uses equivalent fractions to weigh both speed and distance equally 
+	 * @param distance - the distance of the zombie to the medic
+	 * @param speed - the speed of the zombie
+	 * @param maxDistance - the maxDistance a zombie can be from a the medic
+	 * @param maxSpeed - The max speed a zombie can have
+	 * @return - returns the total calculated preferability being the sum of the speed over the maxSpeed and distance over the maxDistance
+	 */
+	private double calculatePreferability(double distance, double speed, double maxDistance, double maxSpeed, double dodgeAbility) {
+		double distanceFactor = 100 / maxDistance;
+		double speedFactor = 100 / maxSpeed;
+		double dodgeFactor = 100 / 1;
+//		double dodgeFactor = 100 /   
+		maxDistance *= distanceFactor;
+		maxSpeed *= speedFactor;    
+//		distance = maxDistance - distance;
+//		speed = maxSpeed - (double) speed;
+		distance *= distanceFactor;
+		speed *= speedFactor;
+		dodgeAbility *= dodgeFactor;
+		distance *= 1.25;
+		return distance + speed + dodgeAbility;
+	}
 
 
 	/**
@@ -221,6 +259,21 @@ public class MedicRobot extends GameRobot {
 	public String getRole() {
 		return "MEDIC";
 	}
+	
+	protected void setHitpoints(int hitPoints) {
+		this.hitPoints = hitPoints;
+	}
+	protected int getHitpoints() {
+		return this.hitPoints;
+	}
+
+	@Override
+	public TurnAction takeTurn(RobotInfoRecord[] state) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+	
+	
 
 
 
