@@ -1,5 +1,6 @@
 package final_project_2026;
-import java.util.Random;
+import java.util.ArrayList;
+import java.util.Random;  
 import becker.robots.*;
 import java.awt.Color;
 
@@ -12,6 +13,7 @@ import java.awt.Color;
  * @version june 2 2026
  */
 public class OutbreakApp {
+
 	// static variables so the main loop can read them
 	private static boolean isGameOver = false;
 	private static int targetThingsToWin = 15;
@@ -19,11 +21,15 @@ public class OutbreakApp {
 
 	// customizable game parameters
 	private static int playerCount = 12;
-	private static int startingZombieCount = 3;
+	private static int startingZombieCount = 5;
 	private static int maxThings;
 	private static int currentThingsOnBoard = 0;
-	private static final int MEDIC_SPEED = 42;
+	private static final int MEDIC_SPEED = 2;
+	private static int medicHealth = 3;
 
+	private static final Random rand = new Random();
+	public static ArrayList<ZombieInfoRecord> zombieRecords; 
+	
 	private static GameRobot[] players = new GameRobot[playerCount];
 	private static RobotInfoRecord[] records = new RobotInfoRecord[playerCount];
 	private static City playground = new City(15, 26);
@@ -86,7 +92,7 @@ public class OutbreakApp {
 			int sStreet = generateRandomNumber(1, 13);
 			int sAve = generateRandomNumber(1, 24);
 			int sSpeed = generateRandomNumber(1, 4);
-			int sEvade = generateRandomNumber(26, 100);
+			int sEvade = generateRandomNumber(1, 100);
 
 			players[i] = new SurvivorRobot(playground, sStreet, sAve, Direction.NORTH, i, sSpeed, sEvade, 5);
 			players[i].setColor(Color.ORANGE);
@@ -120,32 +126,30 @@ public class OutbreakApp {
 	}
 
 	private static void runGameLoop() {
-        // loop through each player
-        for (int i = 0; i < playerCount; i++) { 
-            if (players[i] == null) {
-                continue;
-            }
-            
-            TurnAction response = players[i].takeTurn(records);
-            int distanceRequested = Math.abs(response.getTargetStreet() - players[i].getStreet()) 
-                                  + Math.abs(response.getTargetAvenue() - players[i].getAvenue());
-            
-            // check to make sure the robot doesn't walk into a wall
-            boolean validSpeed = distanceRequested <= players[i].getSpeed();
-            boolean validBounds = response.getTargetStreet() >= 1 && response.getTargetStreet() <= 13 &&
-                                  response.getTargetAvenue() >= 1 && response.getTargetAvenue() <= 24;
-            
-            // check if robot has enough speed to move AND the move is within the map limits
-            if (validSpeed && validBounds) {
-                executeAction(players[i], response);
-            } 
-            else {
-                System.out.println("Robot " + players[i].getId() + " requested an invalid move and forfeited its turn.");
-            }
-            
-            records[i] = generateRecord(players[i]);
-        }
-    }
+		// loop through each player
+		for (int i = 0; i < playerCount; i++) { 
+			TurnAction response;
+			if (players[i] == null) {
+				continue;
+			}
+			if (players[i].getRole() == "MEDIC") {
+				zombieRecords = new ArrayList<ZombieInfoRecord>();
+				response = players[i].takeTurn(records, zombieRecords);
+			}
+			else { 
+				response = players[i].takeTurn(records);
+			}
+			int distanceRequested = Math.abs(response.getTargetStreet() - players[i].getStreet()) 
+					+ Math.abs(response.getTargetAvenue() - players[i].getAvenue());
+
+			// check if robot has enough speed to move
+			if (distanceRequested <= players[i].getSpeed()) {
+				executeAction(players[i], response);
+			}
+
+			records[i] = generateRecord(players[i]);
+		}
+	}
 
 	/**
 	 * executes physical movement and resolves combat interaction dice rolls
@@ -176,6 +180,11 @@ public class OutbreakApp {
 			System.out.println("medic healed robot " + action.getTargetBot());
 			resolveCombat(bot, action.getTargetBot());
 		}
+//		
+//		if (intent.equals(TurnAction.HEAL_SELF)) {
+//			MedicRobot medic = (MedicRobot) bot;
+//			increaseHitpoints(medic);
+//		}  
 	}
 
 	/**
@@ -200,12 +209,21 @@ public class OutbreakApp {
 
 		// check if zombie beat defender tie goes to defender
 		if (attacker.getRole().equals("MEDIC")) {
+			int attackerId = attacker.getId();
 			if (zRoll > sRoll) {
 				System.out.println("Medic won interaction " + zRoll + " vs " + sRoll);
 				swapRobotClass(targetId, false);
 			}
 			else {
 				System.out.println("Zombie evaded infection " + sRoll + " vs " + zRoll);
+				
+				for (int i = 0; i < zombieRecords.size(); i++) {
+					if (zombieRecords.get(i).getId() == attackerId) {
+						zombieRecords.get(i).increaseDodges(1);
+						zombieRecords.get(i).increaseTotalAttacks(1);
+						zombieRecords.get(i).setDodgeAbility(zombieRecords.get(i).getDodges() / zombieRecords.get(i).getTotalAttacks());
+					}
+				}
 			}
 		}
 
@@ -214,7 +232,8 @@ public class OutbreakApp {
 			if (zRoll > sRoll) {
 				System.out.println("zombie won interaction " + zRoll + " vs " + sRoll);
 				swapRobotClass(targetId, true);
-			} else {
+			} 
+			else {
 				System.out.println("survivor evaded infection " + sRoll + " vs " + zRoll);
 			}
 		}
@@ -226,9 +245,15 @@ public class OutbreakApp {
 	 * @return int number of dice to roll
 	 */
 	private static int getQuadrant(int ability) {
-		if (ability <= 25) { return 1; }
-		if (ability <= 50) { return 2; }
-		if (ability <= 75) { return 3; }
+		if (ability <= 25) { 
+			return 1; 
+		}
+		if (ability <= 50) { 
+			return 2; 
+		}
+		if (ability <= 75) { 
+			return 3; 
+		}
 		return 4;
 	}
 
@@ -271,23 +296,42 @@ public class OutbreakApp {
 
 	private static void moveRobot(GameRobot bot, int targetStreet, int targetAvenue) {
 		if (bot.getStreet() > targetStreet) {
-			while (bot.getDirection() != Direction.NORTH) { bot.turnLeft(); }
-			while (bot.getStreet() != targetStreet) { bot.move(); }
+			while (bot.getDirection() != Direction.NORTH) { 
+				bot.turnLeft(); 
+			}
+			while (bot.getStreet() != targetStreet) { 
+				bot.move(); 
+			}
 		} 
+		
 		else if (bot.getStreet() < targetStreet) {
 			while (bot.getDirection() != Direction.SOUTH) { 
 				bot.turnLeft(); 
 			}
-			while (bot.getStreet() != targetStreet) { bot.move(); }
+			
+			while (bot.getStreet() != targetStreet) { 
+				bot.move(); 
+			}
 		}
 
 		if (bot.getAvenue() > targetAvenue) {
-			while (bot.getDirection() != Direction.WEST) { bot.turnLeft(); }
-			while (bot.getAvenue() != targetAvenue) { bot.move(); }
+			while (bot.getDirection() != Direction.WEST) { 
+				
+				bot.turnLeft(); 
+			}
+			
+			while (bot.getAvenue() != targetAvenue) { 
+				bot.move(); 
+			}
 		} 
 		else if (bot.getAvenue() < targetAvenue) {
-			while (bot.getDirection() != Direction.EAST) { bot.turnLeft(); }
-			while (bot.getAvenue() != targetAvenue) { bot.move(); }
+			while (bot.getDirection() != Direction.EAST) { 
+				bot.turnLeft(); 
+			}
+			
+			while (bot.getAvenue() != targetAvenue) { 
+				bot.move(); 
+			}
 		}
 	}
 
@@ -311,13 +355,28 @@ public class OutbreakApp {
 		}
 	}
 
+	/**
+	 * generates records to update the game state when needed
+	 * @param GameRobot to be updated
+	 * @return robot info record with new updates, for survivor dynamic speed which changes with amount of items carried
+	 * @author Spencer
+	 */
 	private static RobotInfoRecord generateRecord(GameRobot bot) {
-		return new RobotInfoRecord(bot.getId(), bot.getStreet(), bot.getAvenue(), (int) bot.getSpeed(), bot.isZombie(), 0);
+		if(!bot.isZombie()) {
+			int dynamicSurvivorSpeed = (int) Math.max(1, bot.getSpeed() - bot.countThingsInBackpack());
+			return new RobotInfoRecord(bot.getId(), bot.getStreet(), bot.getAvenue(), dynamicSurvivorSpeed, bot.isZombie(), 0);
+		}
+		else {
+			return new RobotInfoRecord(bot.getId(), bot.getStreet(), bot.getAvenue(), (int) bot.getSpeed(), bot.isZombie(), 0);
+		}
+		
 	}
 	
-
-	// Add this to your static variables at the top of the class:
-	private static final Random rand = new Random();
+//	private static void increaseHitpoints(MedicRobot robot) {
+//		robot.setHitpoints(robot.getHitpoints() + 1);
+//	}
+	
+  
 
 	// Update your method:
 	private static int generateRandomNumber(int min, int max) {
