@@ -1,5 +1,7 @@
 package final_project_2026;
 
+import java.util.ArrayList;
+
 import becker.robots.*;
 
 public abstract class GameRobot extends RobotSE {
@@ -16,10 +18,11 @@ public abstract class GameRobot extends RobotSE {
 		this.speed = speed;
 		this.isZombie = isZombie;
 	}
-
 	public abstract TurnAction takeTurn(RobotInfoRecord[] state);
 
-	public abstract RobotInfoRecord generateRecord();
+	public abstract TurnAction takeTurn(RobotInfoRecord[] state, ArrayList<ZombieInfoRecord> zombieRecords);
+
+//	public abstract RobotInfoRecord generateRecord();
 
 	protected double calculateDistance(int targetStreet, int targetAvenue) {
 		int horizontalDistance = targetAvenue - this.getAvenue();
@@ -49,4 +52,5 @@ public abstract class GameRobot extends RobotSE {
      * @return string the role of the robot
      */
     public abstract String getRole();
+    
 }
