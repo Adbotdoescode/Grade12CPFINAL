@@ -1,4 +1,5 @@
 package final_project_2026;
+
 import java.util.ArrayList;
 import java.util.Random;  
 import becker.robots.*;
@@ -132,13 +133,16 @@ public class OutbreakApp {
 			if (players[i] == null) {
 				continue;
 			}
-			if (players[i].getRole() == "MEDIC") {
+			
+			// FIXED: Replaced == with .equals()
+			if (players[i].getRole().equals("MEDIC")) {
 				zombieRecords = new ArrayList<ZombieInfoRecord>();
 				response = players[i].takeTurn(records, zombieRecords);
 			}
 			else { 
 				response = players[i].takeTurn(records);
 			}
+			
 			int distanceRequested = Math.abs(response.getTargetStreet() - players[i].getStreet()) 
 					+ Math.abs(response.getTargetAvenue() - players[i].getAvenue());
 
@@ -207,7 +211,7 @@ public class OutbreakApp {
 		int zRoll = rollHighest(zDice);
 		int sRoll = rollHighest(sDice);
 
-		// check if zombie beat defender tie goes to defender
+		// PARTNER 1 LOGIC: check if zombie beat defender tie goes to defender
 		if (attacker.getRole().equals("MEDIC")) {
 			int attackerId = attacker.getId();
 			if (zRoll > sRoll) {
@@ -227,7 +231,7 @@ public class OutbreakApp {
 			}
 		}
 
-
+		// PARTNER 2 LOGIC: Zombie infecting survivor
 		if (attacker.getRole().equals("ZOMBIE")) {
 			if (zRoll > sRoll) {
 				System.out.println("zombie won interaction " + zRoll + " vs " + sRoll);
@@ -235,6 +239,11 @@ public class OutbreakApp {
 			} 
 			else {
 				System.out.println("survivor evaded infection " + sRoll + " vs " + zRoll);
+				
+				// if the defender is a survivor, tell it that it successfully dodged the attack
+				if (defender instanceof SurvivorRobot) {
+					((SurvivorRobot)defender).registerSuccessfulDodge();
+				}
 			}
 		}
 	}
@@ -357,19 +366,19 @@ public class OutbreakApp {
 
 	/**
 	 * generates records to update the game state when needed
-	 * @param GameRobot to be updated
+	 * @param bot to be updated
 	 * @return robot info record with new updates, for survivor dynamic speed which changes with amount of items carried
 	 * @author Spencer
 	 */
 	private static RobotInfoRecord generateRecord(GameRobot bot) {
+		// FIXED: Made sure isZombie() has parentheses and bot.countThingsInBackpack() is passed correctly!
 		if(!bot.isZombie()) {
 			int dynamicSurvivorSpeed = (int) Math.max(1, bot.getSpeed() - bot.countThingsInBackpack());
-			return new RobotInfoRecord(bot.getId(), bot.getStreet(), bot.getAvenue(), dynamicSurvivorSpeed, bot.isZombie(), 0);
+			return new RobotInfoRecord(bot.getId(), bot.getStreet(), bot.getAvenue(), dynamicSurvivorSpeed, bot.isZombie(), bot.countThingsInBackpack());
 		}
 		else {
 			return new RobotInfoRecord(bot.getId(), bot.getStreet(), bot.getAvenue(), (int) bot.getSpeed(), bot.isZombie(), 0);
 		}
-		
 	}
 	
 //	private static void increaseHitpoints(MedicRobot robot) {
@@ -378,7 +387,6 @@ public class OutbreakApp {
 	
   
 
-	// Update your method:
 	private static int generateRandomNumber(int min, int max) {
 		return rand.nextInt(max - min + 1) + min;
 	}
