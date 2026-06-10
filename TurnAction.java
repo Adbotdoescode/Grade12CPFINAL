@@ -1,7 +1,7 @@
-package g12CP_FinalProject;
+package final_project_2026;
 
 public class TurnAction {
-	  // Constants to prevent typos
+    // constants to prevent typos
     public static final String MOVE = "MOVE";
     public static final String PICK_UP = "PICK_UP";
     public static final String DROP_OFF = "DROP_OFF";
@@ -20,7 +20,7 @@ public class TurnAction {
     }
     
     public void setTargetBot(int id) {
-    	this.targetBot = id;
+        this.targetBot = id;
     }
 
     public int getTargetStreet() { 
@@ -28,7 +28,7 @@ public class TurnAction {
     }
 
     public int getTargetBot() { 
-    	return this.targetBot; 
+        return this.targetBot; 
     }
     
     public int getTargetAvenue() { 
@@ -38,5 +38,4 @@ public class TurnAction {
     public String getIntent() {
         return this.intent; 
     }
-
 }

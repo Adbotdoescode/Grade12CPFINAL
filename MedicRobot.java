@@ -78,7 +78,7 @@ public class MedicRobot extends GameRobot {
 			for (int i = 0; i < state.length; i++) { 
 
 				// If the robot is a zombie, then add its record to the zombieRecords array
-				if (state[i].getIsZombie() == true) { 
+				if (state[i].getIsZombie() == true && state[i].getId() != this.getId()) { 
 					zombieRecords.add(new ZombieInfoRecord(state[i].getId(), state[i].getStreet(), state[i].getAvenue(), state[i].getSpeed(), state[i].getIsZombie(), calculateDistance(this.getStreet(), this.getAvenue() ,state[i].getStreet(), state[i].getAvenue())));
 				}
 			}
@@ -109,14 +109,22 @@ public class MedicRobot extends GameRobot {
 
 				int targetAvenue = zombieRecords.get(0).getAvenue();
 				int targetStreet = zombieRecords.get(0).getStreet();
-				int totalSteps = Math.abs(zombieRecords.get(0).getStreet() - this.getStreet()) + Math.abs(zombieRecords.get(0).getAvenue() - this.getAvenue());
+				int streetStepsTotal = zombieRecords.get(0).getStreet() - this.getStreet();
+				int avenueStepsTotal = zombieRecords.get(0).getAvenue() - this.getAvenue();
+				if (streetStepsTotal < 0) {
+					streetStepsTotal *= -1;
+				}
+				if (avenueStepsTotal < 0) {
+					avenueStepsTotal *= -1;
+				}
+				int totalSteps = streetStepsTotal + avenueStepsTotal;
 				int targetBot = zombieRecords.get(0).getId();
-				int difference = totalSteps - speed;
-				int avenueSteps = zombieRecords.get(0).getAvenue() - this.getAvenue();
-				int streetSteps = zombieRecords.get(0).getStreet() - this.getStreet();
 
 				if (totalSteps > this.speed) {
 
+					int difference = totalSteps - speed;
+					int avenueSteps = zombieRecords.get(0).getAvenue() - this.getAvenue();
+					int streetSteps = zombieRecords.get(0).getStreet() - this.getStreet();
 					
 					while (difference > 0) {
 
@@ -188,10 +196,6 @@ public class MedicRobot extends GameRobot {
 
 	}
 
-//	@Override
-//	public RobotInfoRecord generateRecord() {
-//		return new RobotInfoRecord(this.getId(), this.getStreet(), this.getAvenue(), this.speed, this.isZombie(), 0);
-//	}
 
 	/**
 	 * This method calculates the direct distance from one point to another using pythagorean theorem

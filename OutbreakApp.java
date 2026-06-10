@@ -23,7 +23,7 @@ public class OutbreakApp {
     private static int startingZombieCount = 3;
     private static int maxThings;
     private static int currentThingsOnBoard = 0;
-    private static final int MEDIC_SPEED = 42;
+    private static final int MEDIC_SPEED = 3;
 
     private static GameRobot[] players = new GameRobot[playerCount];
     private static RobotInfoRecord[] records = new RobotInfoRecord[playerCount];

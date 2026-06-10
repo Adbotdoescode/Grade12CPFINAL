@@ -55,15 +55,6 @@ public class SurvivorRobot extends GameRobot {
 		return forageMode();
 	}
 
-	/**
-	 * generates a record of this robot to share with the other players
-	 * @return RobotInfoRecord
-	 */
-	public RobotInfoRecord generateRecord() {
-		// their speed actually drops down a bit as they pick up more items
-		int dynamicSpeed = Math.max(1, this.baseSpeed - this.currentItems);
-		return new RobotInfoRecord(this.id, this.getStreet(), this.getAvenue(), dynamicSpeed, this.isZombie);
-	}
 
 	/**
 	 * returns the stat used for the combat dice rolls
