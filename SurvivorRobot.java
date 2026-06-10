@@ -1,5 +1,7 @@
 package final_project_2026;
 
+import java.util.ArrayList;
+
 import becker.robots.*;
 
 public class SurvivorRobot extends GameRobot {
@@ -40,8 +42,8 @@ public class SurvivorRobot extends GameRobot {
 	 */
 	@Override
 	public TurnAction takeTurn(RobotInfoRecord[] state) {
-		// gotta sort the threats first so we know whose closest
-		sortThreats(state);
+		// sort the threats first so we know whose closest
+		ThreatRecord[] sortedThreats = sortThreats(state);
 
 		// priority 1 is running away if a zombie gets too close to us
 		TurnAction evasionAction = evadeZombies(state);
@@ -176,7 +178,7 @@ public class SurvivorRobot extends GameRobot {
 			int availableSpeed = Math.max(1, this.baseSpeed - this.currentItems);
 			
 			// array to hold all the spots we could potentially run to 
-			// size of field is 13 x 24 which 312 spots in total 
+			// size of field is 13 x 24 which is 312 spots in total 
 			EscapePoints[] possibleSpots = new EscapePoints[312];
 			int spotCount = 0;
 			
@@ -300,6 +302,12 @@ public class SurvivorRobot extends GameRobot {
 			this.avenue = avenue;
 			this.safetyScore = safetyScore;
 		}
+	}
+
+	@Override
+	public TurnAction takeTurn(RobotInfoRecord[] state, ArrayList<ZombieInfoRecord> zombieRecords) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 	
 }
