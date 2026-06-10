@@ -9,7 +9,6 @@ public class SurvivorRobot extends GameRobot {
 	// these are the variables for the survivors stats and the stuff in their inventory
 	private int dodgeAbility;
 	private int baseSpeed;
-	private int maxCapacity;
 	private int currentItems;
 	private int dangerRadius;
 	
@@ -23,14 +22,12 @@ public class SurvivorRobot extends GameRobot {
 	 * @param id : id of the robot
 	 * @param speed : the initial movement speed they start with
 	 * @param dodgeAbility : the stat we use to evade zombie attacks
-	 * @param maxCapacity : maximum number of things the backpack can hold at once
 	 */
-	public SurvivorRobot(City c, int st, int ave, Direction dir, int id, int speed, int dodgeAbility, int maxCapacity) {
+	public SurvivorRobot(City c, int st, int ave, Direction dir, int id, int speed, int dodgeAbility) {
 		// put false at the end cause its obviously not a zombie
 		super(c, st, ave, dir, id, speed, false);
 		this.dodgeAbility = dodgeAbility;
 		this.baseSpeed = speed;
-		this.maxCapacity = maxCapacity;
 		this.currentItems = 0; 
 		this.dangerRadius = 4;
 	}
@@ -46,17 +43,12 @@ public class SurvivorRobot extends GameRobot {
 		ThreatRecord[] sortedThreats = sortThreats(state);
 
 		// priority 1 is running away if a zombie gets too close to us
-		TurnAction evasionAction = evadeZombies(state);
+		TurnAction evasionAction = evadeZombies(sortedThreats);
 		if (evasionAction != null) {
 			return evasionAction; 
 		}
-		
-		// priority 2 is dropping the things off if our backpack gets completely full
-		if (this.currentItems >= this.maxCapacity) {
-			return deliveryMode();
-		}
 
-		// priority 3 is just looking around for more things if we are safe
+		// priority 2 is just looking around for more things if we are safe
 		return forageMode();
 	}
 
@@ -136,37 +128,11 @@ public class SurvivorRobot extends GameRobot {
 	}
 
 	/**
-	 * finds the shortest path back to the safe zone at street 1 avenue 1
-	 * @return TurnAction : the move or drop off request
-	 */
-	private TurnAction deliveryMode() {
-		// drop off everything once we finally reach the safe zone
-		if (this.getStreet() == 1 && this.getAvenue() == 1) {
-			this.currentItems = 0; 
-			return new TurnAction(this.getStreet(), this.getAvenue(), TurnAction.DROP_OFF);
-		}
-
-		int plannedStreet = this.getStreet();
-		int plannedAvenue = this.getAvenue();
-		int availableSpeed = Math.max(1, this.baseSpeed - this.currentItems);
-
-		for (int i = 0; i < availableSpeed; i++) {
-			if (plannedAvenue > 1) { 
-				plannedAvenue--; 
-			} else if (plannedStreet > 1) { 
-				plannedStreet--; 
-			}
-		}
-
-		return new TurnAction(plannedStreet, plannedAvenue, TurnAction.MOVE);
-	}
-
-	/**
 	 * calculates an escape route if a zombie enters our danger radius
 	 * @param state : the sorted array of records
 	 * @return TurnAction : the move request, or null if were safe
 	 */
-	private TurnAction evadeZombies(RobotInfoRecord[] state) { 
+	private TurnAction evadeZombies(ThreatRecord[] state) { 
 		// make sure there are actually zombies on the board first
 		if (state.length == 0 || !state[0].getIsZombie()) {
 			return null;
@@ -288,7 +254,7 @@ public class SurvivorRobot extends GameRobot {
 	@Override
 	public String getRole() {
 		// returning null for the role for right now
-		return null;
+		return "SURVIVOR";
 	}
 	
 	// a helper class to store and sort the intersections around the Survivor 
