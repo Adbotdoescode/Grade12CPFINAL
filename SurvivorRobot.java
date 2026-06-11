@@ -29,7 +29,7 @@ public class SurvivorRobot extends GameRobot {
 		this.dodgeAbility = dodgeAbility;
 		this.baseSpeed = speed;
 		this.currentItems = 0; 
-		this.dangerRadius = 4;
+		this.dangerRadius = 3;
 	}
 
 	/**
@@ -77,8 +77,8 @@ public class SurvivorRobot extends GameRobot {
 	 */
 	public void registerSuccessfulDodge() {
 		if (this.dangerRadius > 1) {
-			this.dangerRadius--;
-			System.out.println("survivor " + this.id + "learned from the attack. Danger radius lowered to " + this.dangerRadius);
+			this.dangerRadius++;
+			System.out.println("Survivor " + this.id + " learned from the attack. Danger radius increased to " + this.dangerRadius);
 		}
 	}
 
@@ -133,14 +133,23 @@ public class SurvivorRobot extends GameRobot {
 	 * @return TurnAction : the move request, or null if were safe
 	 */
 	private TurnAction evadeZombies(ThreatRecord[] state) { 
-		// make sure there are actually zombies on the board first
-		if (state.length == 0 || !state[0].getIsZombie()) {
-			return null;
+		
+		// checks if a zombie is within the danger radius
+		boolean isZombieNear = false;
+		for (int i = 0; i < state.length; i++) {
+			if (state[i].getIsZombie()) {
+				double physDist = calculateDistance(state[i].getStreet(), state[i].getAvenue());
+				if (physDist <= this.dangerRadius) {
+					isZombieNear = true;
+					break;
+				}
+
+			}
 		}
+			
 		
-		double distanceToClosest = calculateDistance(state[0].getStreet(), state[0].getAvenue());
-		
-		if (distanceToClosest <= this.dangerRadius) {
+		if (isZombieNear) {
+			
 			int availableSpeed = Math.max(1, this.baseSpeed - this.currentItems);
 			
 			// array to hold all the spots we could potentially run to 
