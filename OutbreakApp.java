@@ -25,7 +25,7 @@ public class OutbreakApp {
 	private static int startingZombieCount = 5;
 	private static int maxThings;
 	private static int currentThingsOnBoard = 0;
-	private static final int MEDIC_SPEED = 2;
+	private static final int MEDIC_SPEED = 4;
 
 	private static final Random rand = new Random();
 	public static ArrayList<ZombieInfoRecord> zombieRecords; 
@@ -92,10 +92,10 @@ public class OutbreakApp {
 		for (int i = startingZombieCount + 1; i < playerCount; i++) {
 			int sStreet = generateRandomNumber(1, 13);
 			int sAve = generateRandomNumber(1, 24);
-			int sSpeed = generateRandomNumber(1, 4);
+			int sSpeed = generateRandomNumber(5, 8);
 			int sEvade = generateRandomNumber(1, 100);
 
-			players[i] = new SurvivorRobot(playground, sStreet, sAve, Direction.NORTH, i, sSpeed, sEvade, 5);
+			players[i] = new SurvivorRobot(playground, sStreet, sAve, Direction.NORTH, i, sSpeed, sEvade);
 			players[i].setColor(Color.ORANGE);
 		}
 	}
@@ -280,7 +280,7 @@ public class OutbreakApp {
 		} 
 		else {
 			int evade = generateRandomNumber(1, 100);
-			players[targetId] = new SurvivorRobot(playground, st, ave, dir, targetId, speed, evade, 10);
+			players[targetId] = new SurvivorRobot(playground, st, ave, dir, targetId, speed, evade);
 			players[targetId].setColor(Color.ORANGE);
 		}
 	}
@@ -360,7 +360,7 @@ public class OutbreakApp {
 		else {
 			return new RobotInfoRecord(bot.getId(), bot.getStreet(), bot.getAvenue(), (int) bot.getSpeed(), bot.isZombie(), 0);
 		}
-		
+
 	}
 	
 
@@ -370,4 +370,3 @@ public class OutbreakApp {
 		return rand.nextInt(max - min + 1) + min;
 	}
 }
-
