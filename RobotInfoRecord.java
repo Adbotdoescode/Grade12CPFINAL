@@ -21,11 +21,13 @@ public class RobotInfoRecord {
         this.itemsCarried = itemsCarried;
     }
     
-    public RobotInfoRecord(int id2, int street2, int avenue2, double speed2, boolean zombie) {
-        this.street = street;
-        this.avenue = avenue;
-        this.speed = speed;
-        this.isZombie = isZombie;
+    public RobotInfoRecord(int id, int street, int avenue, double speed, boolean isZombie) {
+        this.id        = id;
+        this.street    = street;
+        this.avenue    = avenue;
+        this.speed     = (int) speed;
+        this.isZombie  = isZombie;
+        this.itemsCarried = 0;
     }
     
 	public int getId() {
