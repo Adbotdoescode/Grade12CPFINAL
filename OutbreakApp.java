@@ -26,7 +26,7 @@ public class OutbreakApp {
 	private static int startingZombieCount = 5;
 	private static int maxThings;
 	private static int currentThingsOnBoard = 0;
-	private static final int MEDIC_SPEED = 12; // left at 12 so ayyan's medic won't break
+	private static final int MEDIC_SPEED = 12;
 
 	private static final Random rand = new Random();
 
