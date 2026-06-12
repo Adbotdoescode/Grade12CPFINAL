@@ -1,7 +1,6 @@
 package final_project_2026;
 
 import java.awt.Color;
-import java.util.ArrayList;
 import java.util.Random;
 
 import becker.robots.City;
@@ -24,223 +23,276 @@ public class MedicRobot extends GameRobot {
 	 * @param speed - speed of robot
 	 * @param isZombie - weather the robot is a zombie or not
 	 */
-	public MedicRobot(City c, int st, int ave, Direction dir, int id, int speed, boolean isZombie) {
+	public MedicRobot(City c, int st, int ave, Direction dir, int id, int speed, boolean isZombie, int playerCount) {
 		super(c, st, ave, dir, id, speed, isZombie);
-		this.currentStrategy = "GATHER";
 		this.setColor(Color.WHITE);
+		this.setLabel(" ID " + this.id); 
+		zombieRecords = new ZombieInfoRecord[playerCount]; 
 	}
 
 
-	Random generator = new Random();
-	
+	// Instance variables are initialized 
+	private int lastTargetStreet;
+	private int lastTargetAvenue;
+	private int lastTargetZombie;
 	private int hitPoints;
+	double dodgeAbility = 0;
+	int totalDodges = 0; 
+	int totalAttacks = 0;
+	private ZombieInfoRecord[] zombieRecords;
 
+	Random generator = new Random();
 	private int ability = generator.nextInt(100)+1;
-	
-	private String currentStrategy;
+
+
 
 
 	/**
-	 *This method uses the array of records for other robots to help decide weather it is going to heal zombies, gather things or heal itself
+	 *This method uses the array of records for other robots to decide the best possible move it can make 
 	 *@param state - the array of records containing information about each robot that the medic will use to make its decision
 	 */
 
-	public TurnAction takeTurn(RobotInfoRecord[] state, ArrayList<ZombieInfoRecord> zombieRecords) { 
-		evaluateStrategy(state);
-		TurnAction response = determineResponse(currentStrategy, state, zombieRecords);
+	@Override
+	public TurnAction takeTurn(RobotInfoRecord[] state) { 
+		TurnAction response = determineResponse(state);
 		return response;
 	}
 
 	/**
-	 * Depending on the strategy dictated by the evaluateStrategy method, it will calculate the nearest zombie to heal or the nearest thing to collect or move to the storing location to heal itself
-	 * @param currentStrategy - The strategy dictating what the main goal of the medic's movement will be
+	 * The medic will calculate the best zombie to attempt to heal based on speed, distance and dodgeAbility 
 	 * @param state - the list of records providing information on all the other robots
-	 * @return - the response that the medic returns to the controller class 
+	 * @return - the response that the medic returns to the controller class in the form of a record called TurnAction
 	 */
-	private TurnAction determineResponse(String currentStrategy, RobotInfoRecord[] state, ArrayList<ZombieInfoRecord> zombieRecords) {
-		
+	private TurnAction determineResponse(RobotInfoRecord[] state) {
+
+		// initialize variables for this method
 		double maxSpeed = 10;
 		double maxDistance = Math.sqrt((10*10)+(10*10));
+		TurnAction response = new TurnAction(0, 0, ""); 
+		int targetAvenue = 0;
+		int targetStreet = 0;
+		int targetBot = 0;
+		int totalSteps = 0;
 
-		TurnAction response = new TurnAction(0, 0, "");
-		System.out.println(this.currentStrategy);
-		if (currentStrategy == "GATHER") {
-			System.out.println("Medic is gathering");
+		// For the length of the records array
+		for (int i = 0; i < state.length; i++) { 
+
+
+			// we need to save the values of dodgeAbility, totalDodges and totalAttacks before we begin wiping out and replacing zombieInfoRecords. However, do not do this if zombieRecords[i] is equal to null to avoid a nullPointerException
+			if (zombieRecords[i] != null) {
+				dodgeAbility = zombieRecords[i].getDodgeAbility();
+				totalDodges = zombieRecords[i].getTotalDodges();
+				totalAttacks = zombieRecords[i].getTotalAttacks();
+			}
+
+
+			// begin replacing each item in zombieInfoRecord with the updated information from the robotInfoRecord array. 
+			// Since the order of the items in the array DO NOT match up in terms of ID, an inner loop is needed to search for the index with the correct ID inside of the state array (of type robotInfoRecord)
+			for (int j = 0; j < state.length; j++) { 
+				if (zombieRecords[i] != null && state[j].getId() == zombieRecords[i].getId()) {
+					zombieRecords[i] = (new ZombieInfoRecord(state[j].getId(), state[j].getStreet(), state[j].getAvenue(), state[j].getSpeed(), state[j].getIsZombie(), calculateDistance(this.getStreet(), this.getAvenue() ,state[j].getStreet(), state[j].getAvenue())));
+					zombieRecords[i].setDodgeAbility(dodgeAbility);
+					zombieRecords[i].setTotalAttacks(totalAttacks);
+					zombieRecords[i].setTotalDodges(totalDodges);
+				}
+			} 
+
+			// However, if the element at zombieRecord's index is null, then that means this is the medic's very first move. In that case, directly copy every value from state into each corresponding element in zombieRecord, no searching is needed here
+			if (zombieRecords[i] == null) { 
+				zombieRecords[i] = (new ZombieInfoRecord(state[i].getId(), state[i].getStreet(), state[i].getAvenue(), state[i].getSpeed(), state[i].getIsZombie(), calculateDistance(this.getStreet(), this.getAvenue() ,state[i].getStreet(), state[i].getAvenue())));
+				zombieRecords[i].setDodgeAbility(dodgeAbility);
+				zombieRecords[i].setTotalAttacks(totalAttacks);
+				zombieRecords[i].setTotalDodges(totalDodges);
+			}
+		}
+
+
+		// Loop over each element inside of zombieRecords
+		for (int i = 0; i < zombieRecords.length; i++) { 
+
+			// if the record at index i has the same id as the lastTargetZombie that the medic attempted to heal and if the medic is on the same spot as where that zombie was a move ago, then this means the medic attempted to heal and we can use this to learn about the zombie's dodgeAbility
+			if (zombieRecords[i].getId() != this.getId() && zombieRecords[i].getId() == lastTargetZombie && this.getStreet() == lastTargetStreet && this.getAvenue() == lastTargetAvenue) {
+
+					// if that zombie is still a zombie, that means it successfully dodged the medic. In that case, we will increase both dodges and total attacks and determine the new value for dodgeAbility as a fraction of the totalDodges / totalAttacks
+					if (zombieRecords[i].getIsZombie() == true) {
+						zombieRecords[i].increaseDodges();
+						zombieRecords[i].increaseTotalAttacks(); 
+						zombieRecords[i].setDodgeAbility(zombieRecords[i].getTotalDodges() / zombieRecords[i].getTotalAttacks()); 
+
+					}
+					else  {
+						zombieRecords[i].increaseTotalAttacks();
+						zombieRecords[i].setDodgeAbility(zombieRecords[i].getTotalDodges() / zombieRecords[i].getTotalAttacks());; 
+					}
+
+			}
+		}
+
+		// Loop over the length of zombieRecords and determine totalUndesirability by passing the distance, speed, and dodgeAbility into the calculatePreferability method
+		for (int i = 0; i < zombieRecords.length; i++) { 
+			zombieRecords[i].setTotalUndesirability(calculateUndesirability(calculateDistance(this.getStreet(), this.getAvenue() ,zombieRecords[i].getStreet(), zombieRecords[i].getAvenue()), zombieRecords[i].getSpeed(), maxDistance, maxSpeed, zombieRecords[i].getDodgeAbility(), zombieRecords[i].getTotalAttacks()));
+		} 
+
+		if (zombieRecords.length > 0) { 
+
+			// Use selection sort to sort the array of zombie records based on the their distance to the medic (least to greatest)
+			// Outer Loop - After loop through and finding the smallest totalUndeserability record swap it with the index at i and keep repeating this process for the length of zombieRecords
+			for (int i = 0; i < zombieRecords.length; i++) {
+				int lastIndex = i;
+				double currentMax = zombieRecords[i].getTotalUndesirability();
+
+				// Inner loop 
+				for (int j = i; j < zombieRecords.length; j++) { 
+					// if the record at j has a smaller totalUndeserability then currentMin, then make it the new minimum and change lastIndex as well
+					if (zombieRecords[j].getTotalUndesirability() < currentMax) { 
+						lastIndex = j;
+						currentMax = zombieRecords[j].getTotalUndesirability();
+					}
+				}
+
+				// swapping the record at index i with the record at lastIndex
+				ZombieInfoRecord temp = zombieRecords[lastIndex];
+				zombieRecords[lastIndex] = zombieRecords[i];
+				zombieRecords[i] = temp;
+			}
+
+// 			DEBUG STATEMENT TO CHECK SELECTION SORT
+			for (int i = 0; i < zombieRecords.length; i++ ) { 
+				System.out.println("Zombie ID: " + zombieRecords[i].getId() + "TOTAL PREFERABILITY: " + zombieRecords[i].getTotalUndesirability() + " ISZOMBIE: " + zombieRecords[i].getIsZombie());
+			}
+
+
+			// Loop over the entire length of zombieRecords. Since zombieRecords contains both survivors and zombies sorted, this loop will find the first ZOMBIE with the smallest undesirablity number
+			for (int j = 0; j < zombieRecords.length; j++) { 
+				// if the record at index j is a zombie and is not the medic itself, then that is the zombie with the least undesirability. This zombie is then used to set the target avenue, target street and target bot
+				if (zombieRecords[j].getIsZombie() == true && zombieRecords[j].getId() != this.getId()) { 
+					System.out.println("CHOSEN ZOMBIE IS " + zombieRecords[j].getId());
+					targetAvenue = zombieRecords[j].getAvenue();
+					targetStreet = zombieRecords[j].getStreet();
+					targetBot = zombieRecords[j].getId();
+					break;
+				} 
+			}
+ 
+			// Determine the total street steps and avenue steps to determine the total # of steps
+			int avenueSteps = zombieRecords[targetBot].getAvenue() - this.getAvenue(); 
+			int streetSteps = zombieRecords[targetBot].getStreet() - this.getStreet();
+			totalSteps = Math.abs(avenueSteps) + Math.abs(streetSteps);
+			int difference = totalSteps - speed;
+//			System.out.println("TotalSteps is " +  totalSteps);
+//			System.out.println("Difference is " +  difference);
+			System.out.println("FINAL TARGET AVENUE is " +  targetAvenue);
+			System.out.println("FINAL TARGET STREET is " +  targetStreet);
+			
+			// If total steps is greater than speed, then we must reduce our targetStreet and targetAvenue to prevent an illegal move
+			if (totalSteps > this.speed) {
+
+				// The difference is the difference between the current number of steps required and the speed limit. It indicates how many steps must be taken off in order to make the move legal. Once difference reaches zero, the move becomes legal
+				while (difference > 0) {
+
+					// Start by decreasing the avenue steps by one (if avenue steps is positive). Decrease difference at the same time
+					if (avenueSteps > 0) {
+						avenueSteps--;
+						difference--;
+//						System.out.println("NEW DIFFERENCE " + difference); 
+//						System.out.println("NEW avenueSteps" + avenueSteps); 
+					}
+
+					// If avenueSteps is negative, then increase avenueSteps to reduce the total number of steps
+					else if (avenueSteps < 0) {
+						avenueSteps++;
+						difference--;
+//						System.out.println("NEW DIFFERENCE " + difference); 
+//						System.out.println("NEW avenueSteps" + avenueSteps); 
+						
+					}
+
+					// Once avenueSteps is equal to 0, neither of the first two statements are able to run. In that case, begin shortening the streetSteps. Decreasing streetSteps if it is positive 
+					else if (streetSteps > 0) {
+						streetSteps--;
+						difference--;
+//						System.out.println("NEW DIFFERENCE " + difference); 
+//						System.out.println("NEW streetSteps" + streetSteps); 
+					}
+
+					// If streetSteps is negative, then increase avenueSteps to reduce the total number of steps
+					else if (streetSteps < 0) {
+						streetSteps++;
+						difference--;
+//						System.out.println("NEW DIFFERENCE " + difference); 
+//						System.out.println("NEW streetSteps" + streetSteps); 
+					}
+				}
+
+				// calculate the new targetStreet and targetAvenue
+				targetStreet = this.getStreet() + streetSteps;
+				targetAvenue = this.getAvenue() + avenueSteps;
+				
+//				System.out.println("NEW Difference is " +  difference);
+//				System.out.println("NEW avenueSteps is " +  avenueSteps);
+//				System.out.println("NEW streetSteps is " +  streetSteps);
+//				System.out.println("NEW targetStreet is " +  targetStreet);
+//				System.out.println("NEW targetAvenue is " +  targetAvenue);
+				
+				
+			}
+
+			response = new TurnAction(targetStreet, targetAvenue, "HEAL");
+			response.setTargetBot(targetBot);
+
+			// update lastTargetStreet, lastTargetAvenue and lastTargetZombie to help determine dodgeAbility the next time this method is ran
+			lastTargetStreet = response.getTargetStreet();
+			lastTargetAvenue = response.getTargetAvenue();
+			lastTargetZombie = response.getTargetBot();
 
 		}
 
-		// If the current strategy is heal, then make a separate array containing only the records of zombies and find the closest zombie using selection sort and return an action object requesting to heal it
-		else if (currentStrategy == "HEAL") {
-			
-			if (this.canPickThing() == true) { 
-				this.pickThing();
-				response = new TurnAction(this.getStreet(), this.getAvenue(), "HEAL_SELF");
-				return response;
-			}
-//			System.out.println("Medic is healing");
-
-			// For the length of the records array
-			for (int i = 0; i < state.length; i++) { 
-
-				// If the robot is a zombie, then add its record to the zombieRecords array
-				if (state[i].getIsZombie() == true && state[i].getId() != this.getId()) { 
-					zombieRecords.add(new ZombieInfoRecord(state[i].getId(), state[i].getStreet(), state[i].getAvenue(), state[i].getSpeed(), state[i].getIsZombie(), calculateDistance(this.getStreet(), this.getAvenue() ,state[i].getStreet(), state[i].getAvenue())));
-				}
-			}
-			
-			for (int i = 0; i < zombieRecords.size(); i++) {
-				zombieRecords.get(i).setTotalPreferability(calculatePreferability(calculateDistance(this.getStreet(), this.getAvenue() ,zombieRecords.get(i).getStreet(), zombieRecords.get(i).getAvenue()), zombieRecords.get(i).getSpeed(), maxDistance, maxSpeed, zombieRecords.get(i).getDodgeAbility()));
-			}
-				
-			if (zombieRecords.size() > 0) { 
-
-				// Use selection sort to sort the array of zombie records based on the their distance to the medic (least to greatest)
-				// Outer Loop - After loop through and finding the smallest distance record swap it with the index at i and keep repeating this process for the length of zombieRecords
-				for (int i = 0; i < zombieRecords.size(); i++) {
-					int lastIndex = i;
-					double currentMax = zombieRecords.get(i).getTotalPreferability();
-
-					// Inner loop 
-					for (int j = i; j < zombieRecords.size(); j++) { 
-						// if the record at j has a closer distance then currentMin, then make it the new minimum and change lastIndex as well
-						if (zombieRecords.get(j).getTotalPreferability() < currentMax) { 
-							lastIndex = j;
-							currentMax = zombieRecords.get(j).getTotalPreferability();
-						}
-					}
-
-
-					ZombieInfoRecord temp = zombieRecords.get(lastIndex);
-					zombieRecords.set(lastIndex, zombieRecords.get(i));
-					zombieRecords.set(i, temp);
-				}
-				
-				for (int i = 0; i < zombieRecords.size(); i++ ) { 
-					System.out.println("Zombie ID: " + zombieRecords.get(i).getId() + "TOTAL PREFERABILITY: " + zombieRecords.get(i).getTotalPreferability() + " dodgeAbility: " + zombieRecords.get(i).getDodgeAbility());
-				}
-				
-								System.out.println("THE CHOSEN ZOMBIE TO BE HEALED IS: ID NUMBER --> " + zombieRecords.get(0).getId());
-
-				int targetAvenue = zombieRecords.get(0).getAvenue();
-				int targetStreet = zombieRecords.get(0).getStreet();
-				int streetStepsTotal = zombieRecords.get(0).getStreet() - this.getStreet();
-				int avenueStepsTotal = zombieRecords.get(0).getAvenue() - this.getAvenue();
-				if (streetStepsTotal < 0) {
-					streetStepsTotal *= -1;
-				}
-				if (avenueStepsTotal < 0) {
-					avenueStepsTotal *= -1;
-				}
-				int totalSteps = streetStepsTotal + avenueStepsTotal;
-				int targetBot = zombieRecords.get(0).getId();
-
-				if (totalSteps > this.speed) {
-
-					int difference = totalSteps - speed;
-					int avenueSteps = zombieRecords.get(0).getAvenue() - this.getAvenue();
-					int streetSteps = zombieRecords.get(0).getStreet() - this.getStreet();
-					
-					while (difference > 0) {
-
-						if (avenueSteps > 0) {
-							avenueSteps--;
-							difference--;
-						}
-
-						else if (avenueSteps < 0) {
-							avenueSteps++;
-							difference--;
-						}
-
-						else if (streetSteps > 0) {
-							streetSteps--;
-							difference--;
-						}
-
-						else if (streetSteps < 0) {
-							streetSteps++;
-							difference--;
-						}
-					}
-					
-					targetStreet = this.getStreet() + streetSteps;
-					targetAvenue = this.getAvenue() + avenueSteps;
-				}
-				
-
-				response = new TurnAction(targetStreet, targetAvenue, "HEAL");
-				response.setTargetBot(targetBot);
-
-			}
-
-			return response;
-		}
 		return response;
 	}
 
 
 	/**
-	 * This method figures out weather the robot will be healing zombies, gathering items or healing itself
-	 * @param state - The array of records for each player in the game
-	 */
-	private void evaluateStrategy(RobotInfoRecord[] state) {
-		int survivorCount = 0;
-		int zombieCount = 0;
-
-		// Loop over each item in the array of records and for each record, figure out which ones are zombies and which ones are survivors
-		for (int i = 0; i < state.length; i++) {
-			// If the record is for a zombie, increase zombie count by 1, otherwise survivor count
-			if (state[i].getIsZombie() == true) { 
-				zombieCount += 1;
-			}
-			else {
-				survivorCount += 1;
-			}
-		}
-
-		// If the survivor count was greater than zombie count, then healing is not really needed, and in that case, gather, otherwise heal
-		if (survivorCount >= zombieCount) { 
-			currentStrategy = "HEAL";
-		}
-
-		else { 
-			currentStrategy = "HEAL";
-
-		}
-
-	}
-	
-	/**
-	 * This method calculates the total preferability which combines the speed and distanceToMedic attributes of the zombie. Uses equivalent fractions to weigh both speed and distance equally 
+	 * This method calculates the total undesirability which combines the speed and distanceToMedic attributes of the zombie. Uses equivalent fractions to weigh both speed and distance equally 
+	 * First factors are determines for distance, speed and dodgeAbility (the number that must be multiplied to bring the max values for each attribute to 100). These factors are then applied to each of the attributes we are sorting by 
 	 * @param distance - the distance of the zombie to the medic
 	 * @param speed - the speed of the zombie
 	 * @param maxDistance - the maxDistance a zombie can be from a the medic
 	 * @param maxSpeed - The max speed a zombie can have
-	 * @return - returns the total calculated preferability being the sum of the speed over the maxSpeed and distance over the maxDistance
+	 * @return - returns the total calculated undesirability being the sum of the speed over the maxSpeed and distance over the maxDistance
 	 */
-	private double calculatePreferability(double distance, double speed, double maxDistance, double maxSpeed, double dodgeAbility) {
+	private double calculateUndesirability(double distance, double speed, double maxDistance, double maxSpeed, double dodgeAbility, double totalAttacks) {
+		
 		double distanceFactor = 100 / maxDistance;
 		double speedFactor = 100 / maxSpeed;
 		double dodgeFactor = 100 / 1;
-//		double dodgeFactor = 100 /   
+		
+		
 		maxDistance *= distanceFactor;
 		maxSpeed *= speedFactor;    
-//		distance = maxDistance - distance;
-//		speed = maxSpeed - (double) speed;
 		distance *= distanceFactor;
-		speed *= speedFactor;
-		dodgeAbility *= dodgeFactor;
 		distance *= 1.25;
+		speed *= speedFactor;
+
+		// Since one attack is not enough to accurately estimate each robots dodgeAbility, dodgeAbility is only applied after 3 attacks
+		// Note, totalAttacks is set to be greater than 2, however dodgeAbility will be applied after 3 complete attacks not 2 because during the 4th attack is when totalAttacks will be 3 (since totalAttacks is always calculated on the NEXT turn)
+		if (totalAttacks > 2) {
+			dodgeAbility *= dodgeFactor;
+		}
+		else { 
+			dodgeAbility = 0;
+		}
+
 		return distance + speed + dodgeAbility;
 	}
 
 
 	/**
-	 * This method calculates the direct distance from one point to another using pythagorean theorem
+	 * This method calculates the direct distance from one point to another using pythagorean theorem. It takes the (square root) of the difference between the avenues (squared) + difference between the streets (squared)
 	 * @param startingStreet - the street of the starting point
-	 * @param startingAvenue - the avenue of the starting point
+	 * @param startingAvenue - the avenue of the starting point 
 	 * @param targetStreet - the street of the ending point
 	 * @param targetAvenue - the avenue of the ending point
+	 * @return returns the double value of the directly distance from the starting street and avenue to the target street and avenue
 	 */
 
 	protected double calculateDistance(int startingStreet, int startingAvenue, int targetStreet, int targetAvenue) {
@@ -250,31 +302,22 @@ public class MedicRobot extends GameRobot {
 		return distance;
 	}
 
+	/**
+	 * Returns the ability attribute which determines the chance the medic has to successfully infect a zombie
+	 * @return returns an integer from 1-100 which determines the Medic's combat ability
+	 */
 	@Override
 	public int getCombatAbility() {
 		return this.ability;
 	}
 
+	/**
+	 * Returns the role of the robot, in this case "MEDIC"
+	 * @return returns the String containing the role of the robot
+	 */
 	@Override
 	public String getRole() {
 		return "MEDIC";
 	}
 	
-	protected void setHitpoints(int hitPoints) {
-		this.hitPoints = hitPoints;
-	}
-	protected int getHitpoints() {
-		return this.hitPoints;
-	}
-
-	@Override
-	public TurnAction takeTurn(RobotInfoRecord[] state) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-	
-	
-
-
-
 }
