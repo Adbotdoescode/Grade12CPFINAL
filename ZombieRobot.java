@@ -1,188 +1,378 @@
 package final_project_2026;
 
 import java.awt.Color;
+import java.util.ArrayList;
+
 import becker.robots.*;
 
 /**
- * represents a zombie robot that hunts down survivors based on distance,
- * items carried, and past evasion success.
+ * represents a zombie robot in the game
  * @author Adam
- * @version May 26, 2026
  */
 public class ZombieRobot extends GameRobot {
 
-	// instance variables to store learning info
-	private int[] learnedEvasionStats;
+	// variables tracking internal stats and targeting memory
+	private int[] estimatedEvadeStats;
 	private int currentTargetId;
+	private String lastIntent;
+	private int attackAbility;
 
 	/**
-	 * creates a new zombie robot
-	 * @param c the city the robot is in
-	 * @param st the starting street
-	 * @param ave the starting avenue
-	 * @param dir the starting direction
-	 * @param id the unique identifier for this robot
-	 * @param speed the movement speed of this robot
+	 * constructor to create the zombie robot
+	 * @param c city robot starts in
+	 * @param st int street robot starts in
+	 * @param ave int avenue robot starts in
+	 * @param dir direction robot faces in initially
+	 * @param id int robot id
+	 * @param speed int speed of the robot
+	 * @param attackAbility int combat strength from 1 to 100
+	 * @param totalPlayers int the maximum amount of players in the game
 	 */
-	public ZombieRobot(City c, int st, int ave, Direction dir, int id, int speed) {
+	public ZombieRobot(City c, int st, int ave, Direction dir, int id, int speed, int attackAbility, int totalPlayers) {
 		super(c, st, ave, dir, id, speed, true);
-		this.setColor(Color.RED);
-		this.learnedEvasionStats = new int[50]; 
+		this.setColor(Color.GREEN);
+		this.attackAbility = attackAbility;
 		this.currentTargetId = -1;
+		this.lastIntent = "";
+
+		// variable array scaling with total players to prevent bounds errors
+		this.estimatedEvadeStats = new int[totalPlayers]; 
+
+		// loop to initialize memory array with baseline guess
+		for(int i = 0; i < totalPlayers; i++) {
+			this.estimatedEvadeStats[i] = 25;
+		}
 	}
 
-	@Override
+	/**
+	 * executes turn logic based on given board state
+	 * @param state array containing all robot info
+	 * @return chosen action parameters
+	 */
 	public TurnAction takeTurn(RobotInfoRecord[] state) {
-		// update learning based on last turn
 		updateLearning(state);
 
-		// get all valid survivor targets
-		RobotInfoRecord[] targets = getValidTargets(state);
+		// variable array isolating valid targets
+		SurvivorInfoRecord[] targets = getValidTargets(state);
 
-		// sort targets by threat score
-		insertionSortTargets(targets);
+		// check if array contains viable targets
+		if (targets.length > 0) {
+			insertionSortTargets(targets);
 
-		// determine move or attack action
-		return determineAction(targets);
-	}
-
-	/**
-	 * filters the state array to find only living survivors
-	 * @param state the current board state
-	 * @return an array containing only valid targets
-	 */
-	private RobotInfoRecord[] getValidTargets(RobotInfoRecord[] state) {
-		// count valid survivors to size the array
-		int survivorCount = 0;
-		for (int i = 0; i < state.length; i++) {
-			if (!state[i].getIsZombie() && state[i].getId() != this.id) {
-				survivorCount++;
-			}
+			// variable holding output intent
+			TurnAction action = determineAction(targets);
+			this.lastIntent = action.getIntent();
+			return action;
 		}
 
-		// create array and populate it
-		RobotInfoRecord[] targets = new RobotInfoRecord[survivorCount];
-		int index = 0;
-		for(int i = 0; i < state.length; i++) {
-			if(!state[i].getIsZombie() && state[i].getId() != this.id) {
-				targets[index] = state[i];
-				index++;
-			}
-		}
-		
-		return targets;
-	}
-
-	/**
-	 * decides whether to infect or move towards the best target
-	 * @param targets the sorted array of valid targets
-	 * @return the action for this turn
-	 */
-	private TurnAction determineAction(RobotInfoRecord[] targets) {
-		// check if there are targets left
-		if(targets.length > 0) {
-			// best target is now at index 0
-			RobotInfoRecord bestTarget = targets[0];
-			
-			// remember for next turn
-			this.currentTargetId = bestTarget.getId();
-
-			double distanceToBest = calculateDistance(bestTarget.getStreet(), bestTarget.getAvenue());
-
-			// if the distance is next to the zombie
-			if(distanceToBest <= 1.0) {
-				return new TurnAction(bestTarget.getStreet(), bestTarget.getAvenue(), "INFECT");
-			}
-			// otherwise move to them
-			else {
-				int nextStreet = this.getStreet();
-				int nextAvenue = this.getAvenue();
-
-				// closing gap on the longest axis
-				if(Math.abs(bestTarget.getStreet() - this.getStreet()) > Math.abs(bestTarget.getAvenue() - this.getAvenue())) {
-					if(bestTarget.getStreet() > this.getStreet()) {
-						nextStreet++;
-					} else { 
-						nextStreet--;
-					}
-				} else {
-					if(bestTarget.getAvenue() > this.getAvenue()) {
-						nextAvenue++;
-					} else {
-						nextAvenue--;
-					}
-				}
-				
-				return new TurnAction(nextStreet, nextAvenue, "MOVE");
-			}
-		}
-
-		// fall back if no targets exist
 		return new TurnAction(this.getStreet(), this.getAvenue(), "WAIT");
 	}
 
 	/**
-	 * sorts the array of targets based on the 3 criteria
-	 * lower score = better target
-	 * @param arr the array of robots to sort
+	 * builds array of valid targets containing enhanced tracking data
+	 * @param state array containing all robot info
+	 * @return processed array of valid targets
 	 */
-	private void insertionSortTargets(RobotInfoRecord[] arr) {
-		// start at 1 for insertion sort
+	private SurvivorInfoRecord[] getValidTargets(RobotInfoRecord[] state) {
+		// variables used to map total targets and medic location
+		int survivorCount = 0;
+		int medicStreet = -1;
+		int medicAvenue = -1;
+
+		// loop to locate medic and count valid targets
+		for (int i = 0; i < state.length; i++) {
+			// check if index contains object
+			if (state[i] != null) {
+				// check if object represents medic
+				if (state[i].getId() == 0) {
+					medicStreet = state[i].getStreet();
+					medicAvenue = state[i].getAvenue();
+				}
+				// check if object represents valid survivor
+				if (!state[i].getIsZombie() && state[i].getId() != this.id && state[i].getId() != 0) {
+					survivorCount++;
+				}
+			}
+		}
+
+		// variable array scoped to counted survivors
+		SurvivorInfoRecord[] targets = new SurvivorInfoRecord[survivorCount];
+
+		// variable tracking index for output array
+		int index = 0;
+
+		// loop to assemble custom records
+		for(int i = 0; i < state.length; i++) {
+			// check if valid survivor is located at index
+			if(state[i] != null && !state[i].getIsZombie() && state[i].getId() != this.id && state[i].getId() != 0) {
+				// variable extracting historical evade data
+				int knownEvadeStat = this.estimatedEvadeStats[state[i].getId()];
+
+				// variable tracking proximity to medic
+				int distToMedic = 999;
+
+				// check if medic coordinates were found on board
+				if (medicStreet != -1 && medicAvenue != -1) {
+					distToMedic = calculateManhattanDistance(state[i].getStreet(), state[i].getAvenue(), medicStreet, medicAvenue);
+				}
+
+				targets[index] = new SurvivorInfoRecord(
+						state[i].getId(), 
+						state[i].getStreet(), 
+						state[i].getAvenue(), 
+						state[i].getSpeed(), 
+						state[i].getIsZombie(), 
+						state[i].getItemsCarried(),
+						knownEvadeStat,
+						distToMedic
+						);
+				index++;
+			}
+		}
+		return targets;
+	}
+
+	/**
+	 * analyzes targets and overrides to format final turn action
+	 * @param targets processed array of valid targets
+	 * @return generated turn action based on highest priority
+	 */
+	private TurnAction determineAction(SurvivorInfoRecord[] targets) {
+		// check if list contains valid targets
+		if(targets.length > 0) {
+			// variable tracking priority target
+			SurvivorInfoRecord bestTarget = targets[0];
+
+			bestTarget = this.situationalOverride(targets, bestTarget);
+			this.currentTargetId = bestTarget.getId();
+
+			// variable tracking steps required to reach target
+			int distanceToBest = calculateManhattanDistance(this.getStreet(), this.getAvenue(), bestTarget.getStreet(), bestTarget.getAvenue());
+
+			// check if target is reachable in current turn
+			if(distanceToBest <= this.getSpeed()) {
+				// variable formatting combat interaction request
+				TurnAction action = new TurnAction(bestTarget.getStreet(), bestTarget.getAvenue(), TurnAction.INFECT);
+				action.setTargetBot(this.currentTargetId);
+				return action;
+			}
+			// fallback moving closer to target
+			else {
+				// variables tracking current coordinates and remaining movement
+				int nextStreet = this.getStreet();
+				int nextAvenue = this.getAvenue();
+				int speedLeft = (int) this.getSpeed();
+
+				// loop to consume movement while closing distance
+				while (speedLeft > 0 && calculateManhattanDistance(nextStreet, nextAvenue, bestTarget.getStreet(), bestTarget.getAvenue()) > 0) {
+					// check if vertical displacement exceeds horizontal
+					if(Math.abs(bestTarget.getStreet() - nextStreet) > Math.abs(bestTarget.getAvenue() - nextAvenue)) {
+						// check if target is located south
+						if(bestTarget.getStreet() > nextStreet) { 
+							nextStreet++; 
+						}
+						// fallback if target is located north
+						else { 
+							nextStreet--; 
+						}
+					} 
+					// fallback if horizontal displacement equals or exceeds vertical
+					else {
+						// check if target is located east
+						if(bestTarget.getAvenue() > nextAvenue) { 
+							nextAvenue++; 
+						} 
+						// fallback if target is located west
+						else { 
+							nextAvenue--; 
+						}
+					}
+					speedLeft--;
+				}
+				return new TurnAction(nextStreet, nextAvenue, TurnAction.MOVE);
+			}
+		}
+		return new TurnAction(this.getStreet(), this.getAvenue(), "WAIT");
+	}
+
+	/**
+	 * checks specific conditions bypassing mathematical priority logic
+	 * @param targets processed array of valid targets
+	 * @param bestTarget current priority target
+	 * @return overridden priority target
+	 */
+	private SurvivorInfoRecord situationalOverride(SurvivorInfoRecord[] targets, SurvivorInfoRecord bestTarget) {
+		// variable tracking global item state
+		int totalItemsOnBoard = 0;
+
+		// loop to sum all items held by survivors
+		for(int i = 0; i < targets.length; i++) {
+			totalItemsOnBoard+= targets[i].getItemsCarried();
+		}
+		
+		// check if endgame trigger condition is satisfied
+		if (totalItemsOnBoard >= 10) {
+			// variable tracking reckless target
+			SurvivorInfoRecord recklessTarget = targets[0];
+
+			// loop to find target carrying most items
+			for (int i = 1; i < targets.length; i++) {
+				// check if candidate holds more items than current reckless target
+				if (targets[i].getItemsCarried() > recklessTarget.getItemsCarried()) {
+					recklessTarget = targets[i];
+				} 
+				// check if item count is equal
+				else if (targets[i].getItemsCarried() == recklessTarget.getItemsCarried()) {
+					// variables tracking distance comparison
+					int distToCurrent = calculateManhattanDistance(this.getStreet(), this.getAvenue(), targets[i].getStreet(), targets[i].getAvenue());
+					int distToReckless = calculateManhattanDistance(this.getStreet(), this.getAvenue(), recklessTarget.getStreet(), recklessTarget.getAvenue());
+
+					// check if candidate is closer
+					if (distToCurrent < distToReckless) {
+						recklessTarget = targets[i];
+					}
+				}
+			}
+			return recklessTarget;
+		}
+
+		// loop to check local overrides
+		for (int i = 0; i < targets.length; i++) {
+			// variables calculating local distances
+			SurvivorInfoRecord candidate = targets[i];
+			int distToCandidate = calculateManhattanDistance(this.getStreet(), this.getAvenue(), candidate.getStreet(), candidate.getAvenue());
+			int distToBest = calculateManhattanDistance(this.getStreet(), this.getAvenue(), bestTarget.getStreet(), bestTarget.getAvenue());
+
+			// check if candidate satisfies loot pinata condition
+			if (candidate.getItemsCarried() >= 3 && distToCandidate <= 4 && distToBest > 1) {
+				bestTarget = candidate;
+			}
+
+			// check if candidate satisfies point blank condition
+			if (distToCandidate == 1) {
+				// check if priority target is further away or yields fewer items
+				if (distToBest > 1 || (distToBest == 1 && candidate.getItemsCarried() > bestTarget.getItemsCarried())) {
+					bestTarget = candidate;
+				}
+			}
+		}
+		//output to prove highest score is chosen (also uncomment the corresponding line in the method insertionSortTargets)
+		System.out.println("the best target is: " + bestTarget.getId());
+		return bestTarget;
+	}
+
+	/**
+	 * sorts target array via insertion sort algorithm
+	 * @param arr target array to be processed
+	 */
+	private void insertionSortTargets(SurvivorInfoRecord[] arr) {
+		// loop stepping through target elements
 		for(int i = 1; i < arr.length; i++) {
-			RobotInfoRecord key = arr[i];
+			// variables isolating key element and scoring
+			SurvivorInfoRecord key = arr[i];
 			double keyScore = calculateTargetScore(key);
 			int j = i - 1;
 
-			// shift elements that have a higher score than the key
+			// loop shifting elements with greater score value
 			while (j >= 0 && calculateTargetScore(arr[j]) > keyScore) {
 				arr[j + 1] = arr[j];
 				j = j - 1; 
 			}
 			arr[j+1] = key;
 		}
+
+		// loop to verify mathematical sorting order during testing (also uncomment the corresponding line in the method situationalOverride)
+		 for (int k = 0; k < arr.length; k++) { System.out.println("rank " + k + " target id " + arr[k].getId() + " score " + calculateTargetScore(arr[k])); }
 	}
 
 	/**
-	 * calculates the threat score using the 3 minimum criteria
-	 * @param target the robot to evaluate
-	 * @return the calculated threat score
+	 * generates mathematical threat score
+	 * @param target record being analyzed
+	 * @return calculated score determining priority
 	 */
-	private double calculateTargetScore(RobotInfoRecord target) {
-		double distance = calculateDistance(target.getStreet(), target.getAvenue());
+	private double calculateTargetScore(SurvivorInfoRecord target) {
+		// variables separating raw target metrics
+		int distance = calculateManhattanDistance(this.getStreet(), this.getAvenue(), target.getStreet(), target.getAvenue());
 		int itemsCarried = target.getItemsCarried();
-		int evasions = learnedEvasionStats[target.getId()];
+		int estimatedEvade = target.getEstimatedEvade();
+		int distanceToMedic = target.getDistanceToMedic();
 
-		// distance is bad, so adds to score
-		// items are good, so they subtract from score
-		// high evasion are bad, add heavily to score
-		return distance - (itemsCarried * 2.0) + (evasions * 3.0); 
+		return distance - (itemsCarried * 2.0) + (estimatedEvade / 10.0) - (distanceToMedic * 0.5); 
 	}
 
 	/**
-	 * evaluates what happened since the last turn to update the learning about survivors
-	 * @param state the current board state
+	 * processes outcome of previous interactions to map survivor stats
+	 * @param state array containing all robot info
 	 */
 	private void updateLearning(RobotInfoRecord[] state) {
-		// check if we had a target last turn
-		if(currentTargetId != -1) {
+		// check if robot attacked on previous turn
+		if(currentTargetId != -1 && lastIntent.equals(TurnAction.INFECT)) {
+			// variable tracking target status
 			boolean targetStillAlive = false;
 
-			// search the state array for our target
+			// loop searching array for target
 			for(int i = 0; i < state.length; i++) {
-				if(state[i].getId() == currentTargetId && !state[i].getIsZombie()) {
+				// check if record matches target and retains survivor status
+				if(state[i] != null && state[i].getId() == currentTargetId && !state[i].getIsZombie()) {
 					targetStillAlive = true;
-					break; // exit loop once found
+					break; 
 				}
 			}
 
-			// if alive, means chased but failed to infect
-			// increment evasion stat
+			// check if target evaded interaction
 			if(targetStillAlive) {
-				learnedEvasionStats[currentTargetId]++;
-			} else {
-				// reset target if infected
+				estimatedEvadeStats[currentTargetId] += 25;
+
+				// check if tracking stat exceeds bounds
+				if (estimatedEvadeStats[currentTargetId] > 100) {
+					estimatedEvadeStats[currentTargetId] = 100;
+				}
+			} 
+			// fallback if target was infected
+			else {
 				currentTargetId = -1;
 			}
 		}
+	}
+
+	/**
+	 * calculates grid distance between two coordinate pairs
+	 * @param st1 street coordinate primary
+	 * @param ave1 avenue coordinate primary
+	 * @param st2 street coordinate secondary
+	 * @param ave2 avenue coordinate secondary
+	 * @return absolute distance sum
+	 */
+	private int calculateManhattanDistance(int st1, int ave1, int st2, int ave2) {
+		return Math.abs(st1 - st2) + Math.abs(ave1 - ave2);
+	}
+
+	/**
+	 * requests baseline combat stat
+	 * @return attack ability integer
+	 */
+	@Override
+	public int getCombatAbility() {
+		return this.attackAbility;
+	}
+
+	/**
+	 * requests entity role classification
+	 * @return class role string
+	 */
+	@Override
+	public String getRole() {
+		return "ZOMBIE";
+	}
+
+	/**
+	 * handles partner overloaded request bridging
+	 * @param state array containing all robot info
+	 * @param zombieRecords secondary list referencing zombie stats
+	 * @return mapped output from base implementation
+	 */
+	@Override
+	public TurnAction takeTurn(RobotInfoRecord[] state, ArrayList<ZombieInfoRecord> zombieRecords) {
+		return takeTurn(state);
 	}
 }
