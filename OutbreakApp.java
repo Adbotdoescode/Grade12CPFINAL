@@ -1,5 +1,4 @@
 package final_project_2026;
-import java.util.ArrayList;
 import java.util.Random;  
 import becker.robots.*;
 
@@ -15,6 +14,7 @@ import java.awt.Color;
  */
 public class OutbreakApp {
 
+
 	// static variables so the main loop can read them
 	private static boolean isGameOver = false;
 	private static int targetThingsToWin = 25; // bumped from 15 to 25 based on adam's version
@@ -29,7 +29,6 @@ public class OutbreakApp {
 	private static final int MEDIC_SPEED = 12; // left at 12 so ayyan's medic won't break
 
 	private static final Random rand = new Random();
-	public static ArrayList<ZombieInfoRecord> zombieRecords; 
 
 	
 	private static GameRobot[] players = new GameRobot[playerCount];
@@ -76,7 +75,7 @@ public class OutbreakApp {
 		// spawn medic first at id 0
 		int mStreet = generateRandomNumber(1, 13);
 		int mAve = generateRandomNumber(1, 24);
-		players[0] = new MedicRobot(playground, mStreet, mAve, Direction.NORTH, 0, MEDIC_SPEED, true);
+		players[0] = new MedicRobot(playground, mStreet, mAve, Direction.NORTH, 0, MEDIC_SPEED, true, playerCount);
 		players[0].setColor(Color.WHITE);
 
 		// loop to spawn zombies
@@ -134,14 +133,8 @@ public class OutbreakApp {
 			if (players[i] == null) {
 				continue;
 			}
-			TurnAction response;
-			if (players[i].getRole() == "MEDIC") {
-				zombieRecords = new ArrayList<ZombieInfoRecord>();
-				response = players[i].takeTurn(records, zombieRecords);
-			}
-			else { 
-				response = players[i].takeTurn(records);
-			}
+			TurnAction response = players[i].takeTurn(records);
+			
 			int distanceRequested = Math.abs(response.getTargetStreet() - players[i].getStreet()) 
 					+ Math.abs(response.getTargetAvenue() - players[i].getAvenue());
 
@@ -358,22 +351,22 @@ public class OutbreakApp {
 		if (!bot.isZombie()) {
 			int dynamicSurvivorSpeed = (int) Math.max(1, bot.getSpeed() - bot.countThingsInBackpack());
 			// added 0 for dodges since survivors can't be dodged 
-			return new RobotInfoRecord(bot.getId(), bot.getStreet(), bot.getAvenue(), dynamicSurvivorSpeed, bot.isZombie(), bot.countThingsInBackpack(), 0);
+			return new RobotInfoRecord(bot.getId(), bot.getStreet(), bot.getAvenue(), dynamicSurvivorSpeed, bot.isZombie(), bot.countThingsInBackpack());
 		}
 
 		else {
-			int dodges = 0; 
-			// search the existing zombie records for this specific zombie's dodge count 
-			if (zombieRecords != null) {
-				for (int i =  0; i < zombieRecords.size(); i ++) {
-					if (zombieRecords.get(i).getId() == bot.getId()) {
-						dodges  = zombieRecords.get(i).getDodges();
-						break;
-					}
-				}
-			}
+//			int dodges = 0; 
+//			// search the existing zombie records for this specific zombie's dodge count 
+//			if (zombieRecords != null) {
+//				for (int i =  0; i < zombieRecords.size(); i ++) {
+//					if (zombieRecords.get(i).getId() == bot.getId()) {
+//						dodges  = zombieRecords.get(i).getDodges();
+//						break;
+//					}
+//				}
+//			}
 			
-			return new RobotInfoRecord(bot.getId(), bot.getStreet(), bot.getAvenue(), (int) bot.getSpeed(), bot.isZombie(), 0, dodges);
+			return new RobotInfoRecord(bot.getId(), bot.getStreet(), bot.getAvenue(), (int) bot.getSpeed(), bot.isZombie(), 0);
 		}
 	}
 
@@ -382,3 +375,4 @@ public class OutbreakApp {
 		return rand.nextInt(max - min + 1) + min;
 	}
 }
+
