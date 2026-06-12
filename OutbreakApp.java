@@ -17,17 +17,20 @@ public class OutbreakApp {
 
 	// static variables so the main loop can read them
 	private static boolean isGameOver = false;
-	private static int targetThingsToWin = 15;
+	private static int targetThingsToWin = 25; // bumped from 15 to 25 based on adam's version
 	private static int currentThingsCollected = 0;
+	private static int totalTurns = 0; // added total turns tracker
 
 	// customizable game parameters
 	private static int playerCount = 12;
 	private static int startingZombieCount = 5;
 	private static int maxThings;
 	private static int currentThingsOnBoard = 0;
-	private static final int MEDIC_SPEED = 4;
+	private static final int MEDIC_SPEED = 12; // left at 12 so ayyan's medic won't break
 
 	private static final Random rand = new Random();
+	public static ArrayList<ZombieInfoRecord> zombieRecords; 
+
 	
 	private static GameRobot[] players = new GameRobot[playerCount];
 	private static RobotInfoRecord[] records = new RobotInfoRecord[playerCount];
@@ -47,6 +50,7 @@ public class OutbreakApp {
 			updateRecords();
 			manageThings();
 			runGameLoop();
+			totalTurns++; // increments the turn counter
 			checkWinConditions();
 		}
 	}
@@ -72,14 +76,14 @@ public class OutbreakApp {
 		// spawn medic first at id 0
 		int mStreet = generateRandomNumber(1, 13);
 		int mAve = generateRandomNumber(1, 24);
-		players[0] = new MedicRobot(playground, mStreet, mAve, Direction.NORTH, 0, MEDIC_SPEED, true, playerCount);
+		players[0] = new MedicRobot(playground, mStreet, mAve, Direction.NORTH, 0, MEDIC_SPEED, true);
 		players[0].setColor(Color.WHITE);
 
 		// loop to spawn zombies
 		for (int i = 1; i <= startingZombieCount; i++) {
 			int zStreet = generateRandomNumber(1, 13);
 			int zAve = generateRandomNumber(1, 24);
-			int zSpeed = generateRandomNumber(1, 4);
+			int zSpeed = generateRandomNumber(1, 5); // raised speed cap to 5
 			int zAttack = generateRandomNumber(1, 100);
 
 			players[i] = new ZombieRobot(playground, zStreet, zAve, Direction.NORTH, i, zSpeed, zAttack, playerCount);
@@ -90,7 +94,7 @@ public class OutbreakApp {
 		for (int i = startingZombieCount + 1; i < playerCount; i++) {
 			int sStreet = generateRandomNumber(1, 13);
 			int sAve = generateRandomNumber(1, 24);
-			int sSpeed = generateRandomNumber(1, 4);
+			int sSpeed = generateRandomNumber(1, 5); // raised speed cap to 5
 			int sEvade = generateRandomNumber(1, 100);
 
 			players[i] = new SurvivorRobot(playground, sStreet, sAve, Direction.NORTH, i, sSpeed, sEvade);
@@ -124,34 +128,31 @@ public class OutbreakApp {
 		}
 	}
 
-    private static void runGameLoop() {
-        // Loop through each player
-        for (int i = 0; i < playerCount; i++) {
-            if (players[i] == null) {
-                continue;
-            }
+	private static void runGameLoop() {
+		// loop through each player
+		for (int i = 0; i < playerCount; i++) { 
+			if (players[i] == null) {
+				continue;
+			}
+			TurnAction response;
+			if (players[i].getRole() == "MEDIC") {
+				zombieRecords = new ArrayList<ZombieInfoRecord>();
+				response = players[i].takeTurn(records, zombieRecords);
+			}
+			else { 
+				response = players[i].takeTurn(records);
+			}
+			int distanceRequested = Math.abs(response.getTargetStreet() - players[i].getStreet()) 
+					+ Math.abs(response.getTargetAvenue() - players[i].getAvenue());
 
-            TurnAction response = players[i].takeTurn(records);
-            
-            int distanceRequested = Math.abs(response.getTargetStreet() - players[i].getStreet()) 
-                                  + Math.abs(response.getTargetAvenue() - players[i].getAvenue());
+			// check if robot has enough speed to move
+			if (distanceRequested <= players[i].getSpeed()) {
+				executeAction(players[i], response);
+			}
 
-            // Check to make sure the robot doesn't walk into a wall
-            boolean validSpeed = distanceRequested <= players[i].getSpeed();
-            boolean validBounds = response.getTargetStreet() >= 1 && response.getTargetStreet() <= 13 &&
-                                response.getTargetAvenue() >= 1 && response.getTargetAvenue() <= 24;
-
-            // Check if robot has enough speed to move AND the move is within the map limits
-            if (validSpeed && validBounds) {
-                executeAction(players[i], response);
-            } else {
-                System.out.println("Robot " + players[i].getId() + " requested an invalid move and forfeited its turn.");
-            }
-
-            records[i] = generateRecord(players[i]);
-        }
-    }
-	
+			records[i] = generateRecord(players[i]);
+		}
+	}
 
 	/**
 	 * executes physical movement and resolves combat interaction dice rolls
@@ -207,11 +208,11 @@ public class OutbreakApp {
 		// check if zombie beat defender tie goes to defender
 		if (attacker.getRole().equals("MEDIC")) {
 			if (zRoll > sRoll) {
-				System.out.println("Medic won interaction " + zRoll + " vs " + sRoll);
+				System.out.println("medic won interaction " + zRoll + " vs " + sRoll);
 				swapRobotClass(targetId, false);
 			}
 			else {
-				System.out.println("Zombie evaded infection " + sRoll + " vs " + zRoll);
+				System.out.println("zombie evaded infection " + sRoll + " vs " + zRoll);
 			}
 		}
 
@@ -329,7 +330,7 @@ public class OutbreakApp {
 
 	private static void checkWinConditions() {
 		if (currentThingsCollected >= targetThingsToWin) {
-			System.out.println("survivors win they collected " + currentThingsCollected + " things");
+			System.out.println("survivors win in " + totalTurns + " turns they collected " + currentThingsCollected + " things");
 			isGameOver = true;
 			return;
 		}
@@ -342,33 +343,42 @@ public class OutbreakApp {
 		}
 
 		if (survivorsLeft == 0) {
-			System.out.println("zombies win all survivors are infected");
+			System.out.println("zombies win in " + totalTurns + " turns all survivors are infected");
 			isGameOver = true;
 		}
 	}
 
 	/**
 	 * generates records to update the game state when needed
-	 * @param GameRobot to be updated
+	 * @param bot the robot to be updated
 	 * @return robot info record with new updates, for survivor dynamic speed which changes with amount of items carried
-	 * @author Spencer
+	 * @author spencer
 	 */
 	private static RobotInfoRecord generateRecord(GameRobot bot) {
-		if(!bot.isZombie) {
+		if (!bot.isZombie()) {
 			int dynamicSurvivorSpeed = (int) Math.max(1, bot.getSpeed() - bot.countThingsInBackpack());
-			return new RobotInfoRecord(bot.getId(), bot.getStreet(), bot.getAvenue(), dynamicSurvivorSpeed, bot.isZombie(), 0);
+			// added 0 for dodges since survivors can't be dodged 
+			return new RobotInfoRecord(bot.getId(), bot.getStreet(), bot.getAvenue(), dynamicSurvivorSpeed, bot.isZombie(), bot.countThingsInBackpack(), 0);
 		}
+
 		else {
-			return new RobotInfoRecord(bot.getId(), bot.getStreet(), bot.getAvenue(), (int) bot.getSpeed(), bot.isZombie(), 0);
+			int dodges = 0; 
+			// search the existing zombie records for this specific zombie's dodge count 
+			if (zombieRecords != null) {
+				for (int i =  0; i < zombieRecords.size(); i ++) {
+					if (zombieRecords.get(i).getId() == bot.getId()) {
+						dodges  = zombieRecords.get(i).getDodges();
+						break;
+					}
+				}
+			}
+			
+			return new RobotInfoRecord(bot.getId(), bot.getStreet(), bot.getAvenue(), (int) bot.getSpeed(), bot.isZombie(), 0, dodges);
 		}
-		
 	}
-	
 
-
-	// Update your method:
+	// update your method:
 	private static int generateRandomNumber(int min, int max) {
 		return rand.nextInt(max - min + 1) + min;
 	}
 }
-
