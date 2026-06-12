@@ -355,16 +355,6 @@ public class OutbreakApp {
 		}
 
 		else {
-//			int dodges = 0; 
-//			// search the existing zombie records for this specific zombie's dodge count 
-//			if (zombieRecords != null) {
-//				for (int i =  0; i < zombieRecords.size(); i ++) {
-//					if (zombieRecords.get(i).getId() == bot.getId()) {
-//						dodges  = zombieRecords.get(i).getDodges();
-//						break;
-//					}
-//				}
-//			}
 			
 			return new RobotInfoRecord(bot.getId(), bot.getStreet(), bot.getAvenue(), (int) bot.getSpeed(), bot.isZombie(), 0);
 		}
