@@ -14,7 +14,8 @@ public class SurvivorInfoRecord extends RobotInfoRecord {
      * Constructs a SurvivorInfoRecord with specified details
      * @param id The unique identifier for the robot
      * @param street The street location of the robot
-     * @param speed The avenue location of the robot
+     * @param avenue The avenue location of the robot
+     * @param speed The movement speed of the robot
      * @param isZombie Indicates if the robot is a zombie
      * @param itemsCarried The number of items the robot is carrying
      * @param estimatedEvade The estimated evasion capability of the survivor
