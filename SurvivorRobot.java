@@ -1,5 +1,7 @@
 package final_project_2026;
 
+import java.util.ArrayList;
+
 import becker.robots.*;
 
 public class SurvivorRobot extends GameRobot {
@@ -7,8 +9,9 @@ public class SurvivorRobot extends GameRobot {
 	// these are the variables for the survivors stats and the stuff in their inventory
 	private int dodgeAbility;
 	private int baseSpeed;
-	private int maxCapacity;
 	private int currentItems;
+	private int dangerRadius;
+	
 
 	/**
 	 * constructor setting up the survivor robot
@@ -19,50 +22,41 @@ public class SurvivorRobot extends GameRobot {
 	 * @param id : id of the robot
 	 * @param speed : the initial movement speed they start with
 	 * @param dodgeAbility : the stat we use to evade zombie attacks
-	 * @param maxCapacity : maximum number of things the backpack can hold at once
 	 */
-	public SurvivorRobot(City c, int st, int ave, Direction dir, int id, int speed, int dodgeAbility, int maxCapacity) {
+	public SurvivorRobot(City c, int st, int ave, Direction dir, int id, int speed, int dodgeAbility) {
 		// put false at the end cause its obviously not a zombie
 		super(c, st, ave, dir, id, speed, false);
 		this.dodgeAbility = dodgeAbility;
 		this.baseSpeed = speed;
-		this.maxCapacity = maxCapacity;
 		this.currentItems = 0; 
+		this.dangerRadius = 3;
 	}
 
 	/**
 	 * this is the state machine that figures out what action to take this turn
-	 * @param state : the array of records representing everyone else on the board
+	 * @param state : the array of records representing everyone else
 	 * @return TurnAction : the chosen action request that gets sent to the app
 	 */
 	@Override
 	public TurnAction takeTurn(RobotInfoRecord[] state) {
-		// gotta sort the threats first so we know whose closest
-		sortThreats(state);
+		// sort the threats first so we know whose closest
+		ThreatRecord[] sortedThreats = sortThreats(state);
 
 		// priority 1 is running away if a zombie gets too close to us
-		TurnAction evasionAction = evadeZombies(state);
+		TurnAction evasionAction = evadeZombies(sortedThreats);
 		if (evasionAction != null) {
 			return evasionAction; 
 		}
-		
-		// priority 2 is dropping the things off if our backpack gets completely full
-		if (this.currentItems >= this.maxCapacity) {
-			return deliveryMode();
-		}
 
-		// priority 3 is just looking around for more things if we are safe
+		// priority 2 is just looking around for more things if we are safe
 		return forageMode();
 	}
 
 	/**
-	 * generates a record of this robot to share with the other players
-	 * @return RobotInfoRecord
+	 * returns number of things in backpack
 	 */
-	public RobotInfoRecord generateRecord() {
-		// their speed actually drops down a bit as they pick up more items
-		int dynamicSpeed = Math.max(1, this.baseSpeed - this.currentItems);
-		return new RobotInfoRecord(this.id, this.getStreet(), this.getAvenue(), dynamicSpeed, this.isZombie);
+	public int countThingsInBackpack() {
+	    return this.currentItems;
 	}
 
 	/**
@@ -72,6 +66,17 @@ public class SurvivorRobot extends GameRobot {
 	@Override
 	public int getCombatAbility() {
 		return this.dodgeAbility;
+	}
+	
+	/**
+	 * callback method so the main can tell us we survived an attack
+	 * allows the Survivor to learn based on whether or not is dodged an attack and become more/less "confident"
+	 */
+	public void registerSuccessfulDodge() {
+		if (this.dangerRadius > 1) {
+			this.dangerRadius++;
+			System.out.println("Survivor " + this.id + " learned from the attack. Danger radius increased to " + this.dangerRadius);
+		}
 	}
 
 	/**
@@ -120,115 +125,165 @@ public class SurvivorRobot extends GameRobot {
 	}
 
 	/**
-	 * finds the shortest path back to the safe zone at street 1 avenue 1
-	 * @return TurnAction : the move or drop off request
-	 */
-	private TurnAction deliveryMode() {
-		// drop off everything once we finally reach the safe zone
-		if (this.getStreet() == 1 && this.getAvenue() == 1) {
-			this.currentItems = 0; 
-			return new TurnAction(this.getStreet(), this.getAvenue(), TurnAction.DROP_OFF);
-		}
-
-		int plannedStreet = this.getStreet();
-		int plannedAvenue = this.getAvenue();
-		int availableSpeed = Math.max(1, this.baseSpeed - this.currentItems);
-
-		for (int i = 0; i < availableSpeed; i++) {
-			if (plannedAvenue > 1) { 
-				plannedAvenue--; 
-			} else if (plannedStreet > 1) { 
-				plannedStreet--; 
-			}
-		}
-
-		return new TurnAction(plannedStreet, plannedAvenue, TurnAction.MOVE);
-	}
-
-	/**
 	 * calculates an escape route if a zombie enters our danger radius
 	 * @param state : the sorted array of records
 	 * @return TurnAction : the move request, or null if were safe
 	 */
-	private TurnAction evadeZombies(RobotInfoRecord[] state) { 
-		// gotta make sure there are actually zombies on the board first
-		if (state.length == 0 || !state[0].getIsZombie()) {
-			return null;
-		}
-
-		int dangerRadius = 4;
-		double distanceToClosest = calculateDistance(state[0].getStreet(), state[0].getAvenue());
-
-		if (distanceToClosest <= dangerRadius) {
-			int plannedStreet = this.getStreet();
-			int plannedAvenue = this.getAvenue();
-			int zombieStreet = state[0].getStreet();
-			int zombieAvenue = state[0].getAvenue();
-
+	private TurnAction evadeZombies(ThreatRecord[] state) { 
+		
+		// dangerRadius is physical, so I convert it to a threat score threshold and check if the most dangerous zombie is already within the panicThreshold
+				double panicThreshold = this.dangerRadius * 2.0; 
+				boolean isZombieNear = false;
+				
+				// since the array is already sorted, only need to look at the biggest threat which is at index 0
+				if (state.length > 0 && state[0].getIsZombie()) {
+					if (state[0].getThreatScore() <= panicThreshold) {
+						isZombieNear = true;
+					}
+				}
+			
+		
+		if (isZombieNear) {
+			
 			int availableSpeed = Math.max(1, this.baseSpeed - this.currentItems);
-
-			// stepping away from the zombie but making sure we stop at the fences
-			for (int i = 0; i < availableSpeed; i++) {
-				if (zombieAvenue >= plannedAvenue && plannedAvenue > 1) {
-					plannedAvenue--;
-				} else if (zombieAvenue <= plannedAvenue && plannedAvenue < 24) {
-					plannedAvenue++;
-				} else if (zombieStreet <= plannedStreet && plannedStreet < 13) {
-					plannedStreet++;
-				} else if (zombieStreet >= plannedStreet && plannedStreet > 1) {
-					plannedStreet--;
+			
+			// array to hold all the spots we could potentially run to 
+			// size of field is 13 x 24 which is 312 spots in total 
+			EscapePoints[] possibleSpots = new EscapePoints[312];
+			int spotCount = 0;
+			
+			// check every single intersection 
+			for (int s = 1; s <= 13; s++) {
+				for (int a = 1; a <= 24; a++) {
+					
+					// check if the survivor has enough speed to move here in one turn
+					int distanceToSpot = Math.abs(s - this.getStreet()) + Math.abs(a - this.getAvenue());
+					
+					if (distanceToSpot <= availableSpeed) {
+						
+						// figure out how safe this spot is 
+						// the safety is determined by the MOST DANGEROUS zombie from this spot (lowest threat score)
+						double lowestThreatScore = Double.MAX_VALUE;
+						
+						for (int i = 0; i < state.length; i++) {
+							if (state[i].getIsZombie()) {
+								
+								// pythagorean theorem from the test spot to the zombie
+								double distanceToZombie = Math.sqrt(Math.pow(s - state[i].getStreet(), 2) + Math.pow(a - state[i].getAvenue(), 2));
+								
+								// calculate the threat score of this zombie from the perspective of this new spot
+								double baseThreat = distanceToZombie / Math.max(1, state[i].getSpeed());
+								int dodges = state[i].getDodges();
+								double dodgeChance = Math.min(0.99, 0.5 + (0.1 * dodges));
+								
+								double spotThreatScore = baseThreat / (1 - dodgeChance);
+								
+								// if this zombie is more dangerous to this spot than the previous ones, update the lowest score
+								if (spotThreatScore < lowestThreatScore) {
+									lowestThreatScore = spotThreatScore;
+								}
+							}
+						}
+						
+						// add it to our list of choices (the spotThreatScore is now the threat score of the worst zombie)
+						possibleSpots[spotCount] = new EscapePoints(s, a, lowestThreatScore);
+						spotCount++;
+					}
 				}
 			}
-
-			return new TurnAction(plannedStreet, plannedAvenue, TurnAction.MOVE);
-		}
+			
+			// sort the array using insertion sort (because I used selection sort already for the zombie prioritization)
+			// sort from highest safety score to lowest
+			for (int i = 1; i < spotCount; i++) {
+				EscapePoints key = possibleSpots[i];
+				int j = i - 1;
+				
+				// moving the worse spots down the list
+				while (j >= 0 && possibleSpots[j].safetyScore < key.safetyScore) {
+					possibleSpots[j + 1] = possibleSpots[j];
+					j = j - 1;
+				}
+				possibleSpots[j + 1] = key;
+			}
+			
+			
+			// the MOST safest spot is now at index 0
+			EscapePoints bestSpot = possibleSpots[0];
+			
+			return new TurnAction(bestSpot.street, bestSpot.avenue, TurnAction.MOVE);
+		}	
 		
 		return null;
+		
 	}
 
 	/**
-	 * sorts the state array so we put the most dangerous zombies right at the front
-	 * @param state : the array of records
+	 * converts standard records into custom ThreatRecords, then sorts them so we put the most dangerous zombies right at the front
+	 * @param state - the array of records
+	 * @return ThreatRecord[] - a new, sorted array of custom threat records
 	 */
-	private void sortThreats(RobotInfoRecord[] state) {
+	private ThreatRecord[] sortThreats(RobotInfoRecord[] state) {
 		int n = state.length;
+		ThreatRecord[] threats = new ThreatRecord[n];
+
+		// convert all records into my custom ThreatRecord
 		
+		for (int i = 0; i < n; i ++) {
+			double threatScore; 
+			
+			if (state[i].getIsZombie()) {
+				double distance = calculateDistance(state[i].getStreet(), state[i].getAvenue());
+				double baseThreat = distance / Math.max(1,  state[i].getSpeed());
+				
+				// get the dodge count
+				int dodges = state[i].getDodges();
+				
+				// calculate the dodgeing percentage
+				double dodgeChance = Math.min(0.99, 0.5 + (0.1 * dodges));
+				
+				// calculate the final threat score that factors in the dodgeChance
+				threatScore = baseThreat / (1 - dodgeChance);
+				
+			} else {
+				threatScore = Double.MAX_VALUE;
+			}
+			
+			// create a new custom record (pass in the final threatScore and the dodge count)
+			threats[i] = new ThreatRecord(state[i].getId(), state[i].getStreet(), state[i].getAvenue(), state[i].getSpeed(), state[i].getIsZombie(), threatScore, state[i].getDodges());
+		}
+
+		// selection sort algorithm to sort the zombies based on threat score
 		for (int i = 0; i < n - 1; i++) {
 			int mostDangerousIndex = i;
-			
-			for (int j = i + 1; j < n; j++) {
-				if (state[j].getIsZombie()) {
-					double distanceJ = calculateDistance(state[j].getStreet(), state[j].getAvenue());
-					
-					// this threat score blends the distance and speed together so we know the real danger
-					double threatScoreJ = distanceJ / state[j].getSpeed();
-					
-					double currentMinThreatScore;
-					if (state[mostDangerousIndex].getIsZombie()) {
-						double currentDistance = calculateDistance(state[mostDangerousIndex].getStreet(), state[mostDangerousIndex].getAvenue());
-						currentMinThreatScore = currentDistance / state[mostDangerousIndex].getSpeed();
-					} else {
-						// giving non zombies a huge score so they get pushed to the back
-						currentMinThreatScore = Double.MAX_VALUE;
-					}
 
-					if (threatScoreJ < currentMinThreatScore) {
-						mostDangerousIndex = j;
-					}
+			for (int j = i + 1; j < n; j++) {
+				if (threats[j].getThreatScore() < threats[mostDangerousIndex].getThreatScore()) {
+					mostDangerousIndex = j;
 				}
 			}
-			
+
+			// swapping
 			if (mostDangerousIndex != i) {
-				RobotInfoRecord temp = state[mostDangerousIndex];
-				state[mostDangerousIndex] = state[i];
-				state[i] = temp;
+				ThreatRecord temp = threats[mostDangerousIndex];
+				threats[mostDangerousIndex] = threats[i];
+				threats[i] = temp;
 			}
 		}
+
+		return threats;
 	}
 
+	
 	@Override
 	public String getRole() {
 		// returning null for the role for right now
+		return "SURVIVOR";
+	}
+
+	@Override
+	public TurnAction takeTurn(RobotInfoRecord[] state, ArrayList<ZombieInfoRecord> zombieRecords) {
+		// TODO Auto-generated method stub
 		return null;
 	}
+	
 }
