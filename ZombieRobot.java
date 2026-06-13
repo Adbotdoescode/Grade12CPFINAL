@@ -4,8 +4,8 @@ import java.awt.Color;
 import becker.robots.*;
 
 /**
- * Zombie robot with the goal of finding and infecting survivors
- * @author Adam
+ * zombie robot with goal of finding and infecting survivors
+ * @author adam
  */
 public class ZombieRobot extends GameRobot {
 
@@ -15,15 +15,15 @@ public class ZombieRobot extends GameRobot {
 	private int attackAbility;
 
 	/**
-	 * constructor to create the zombie robot
+	 * constructor to create zombie robot
 	 * @param c city robot starts in
 	 * @param st int street robot starts in
 	 * @param ave int avenue robot starts in
 	 * @param dir direction robot faces in initially
 	 * @param id int robot id
-	 * @param speed int speed of the robot
+	 * @param speed int speed of robot
 	 * @param attackAbility int combat strength from 1 to 100
-	 * @param totalPlayers int the maximum amount of players in the game
+	 * @param totalPlayers int maximum amount of players in game
 	 */
 	public ZombieRobot(City c, int st, int ave, Direction dir, int id, int speed, int attackAbility, int totalPlayers) {
 		super(c, st, ave, dir, id, speed, true);
@@ -34,6 +34,7 @@ public class ZombieRobot extends GameRobot {
 
 		this.estimatedEvadeStats = new int[totalPlayers]; 
 
+		// loop to set default evade stats
 		for(int i = 0; i < totalPlayers; i++) {
 			this.estimatedEvadeStats[i] = 25;
 		}
@@ -49,6 +50,7 @@ public class ZombieRobot extends GameRobot {
 
 		SurvivorInfoRecord[] targets = getValidTargets(state);
 
+		// check if targets exist
 		if (targets.length > 0) {
 			insertionSortTargets(targets);
 
@@ -70,12 +72,16 @@ public class ZombieRobot extends GameRobot {
 		int medicStreet = -1;
 		int medicAvenue = -1;
 
+		// loop to count survivors and locate medic
 		for (int i = 0; i < state.length; i++) {
+			// check for valid record
 			if (state[i] != null) {
+				// check for medic id
 				if (state[i].getId() == 0) {
 					medicStreet = state[i].getStreet();
 					medicAvenue = state[i].getAvenue();
 				}
+				// check for valid survivor
 				if (!state[i].getIsZombie() && state[i].getId() != this.id && state[i].getId() != 0) {
 					survivorCount++;
 				}
@@ -85,12 +91,15 @@ public class ZombieRobot extends GameRobot {
 		SurvivorInfoRecord[] targets = new SurvivorInfoRecord[survivorCount];
 		int index = 0;
 
+		// loop to populate target array
 		for(int i = 0; i < state.length; i++) {
+			// check for valid survivor again
 			if(state[i] != null && !state[i].getIsZombie() && state[i].getId() != this.id && state[i].getId() != 0) {
-				
+
 				int knownEvadeStat = this.estimatedEvadeStats[state[i].getId()];
 				int distToMedic = 999;
 
+				// check if medic coordinates are set
 				if (medicStreet != -1 && medicAvenue != -1) {
 					distToMedic = calculateManhattanDistance(state[i].getStreet(), state[i].getAvenue(), medicStreet, medicAvenue);
 				}
@@ -117,6 +126,7 @@ public class ZombieRobot extends GameRobot {
 	 * @return generated turn action based on highest priority
 	 */
 	private TurnAction determineAction(SurvivorInfoRecord[] targets) {
+		// check if targets exist
 		if(targets.length > 0) {
 			SurvivorInfoRecord bestTarget = targets[0];
 
@@ -125,6 +135,7 @@ public class ZombieRobot extends GameRobot {
 
 			int distanceToBest = calculateManhattanDistance(this.getStreet(), this.getAvenue(), bestTarget.getStreet(), bestTarget.getAvenue());
 
+			// check if target is in range
 			if(distanceToBest <= this.getSpeed()) {
 				TurnAction action = new TurnAction(bestTarget.getStreet(), bestTarget.getAvenue(), TurnAction.INFECT);
 				action.setTargetBot(this.currentTargetId);
@@ -135,8 +146,11 @@ public class ZombieRobot extends GameRobot {
 				int nextAvenue = this.getAvenue();
 				int speedLeft = (int) this.getSpeed();
 
+				// loop to calculate movement path
 				while (speedLeft > 0 && calculateManhattanDistance(nextStreet, nextAvenue, bestTarget.getStreet(), bestTarget.getAvenue()) > 0) {
+					// check if street distance is greater than avenue distance
 					if(Math.abs(bestTarget.getStreet() - nextStreet) > Math.abs(bestTarget.getAvenue() - nextAvenue)) {
+						// check direction for street move
 						if(bestTarget.getStreet() > nextStreet) { 
 							nextStreet++; 
 						}
@@ -145,6 +159,7 @@ public class ZombieRobot extends GameRobot {
 						}
 					} 
 					else {
+						// check direction for avenue move
 						if(bestTarget.getAvenue() > nextAvenue) { 
 							nextAvenue++; 
 						} 
@@ -162,28 +177,34 @@ public class ZombieRobot extends GameRobot {
 
 	/**
 	 * checks specific conditions bypassing mathematical priority logic
+	 * enforces strict phase based priority hierarchy
 	 * @param targets processed array of valid targets
-	 * @param bestTarget current priority target
+	 * @param bestTarget current priority target math winner
 	 * @return overridden priority target
 	 */
 	private SurvivorInfoRecord situationalOverride(SurvivorInfoRecord[] targets, SurvivorInfoRecord bestTarget) {
-		int totalItemsOnBoard = 0;
 
-		for(int i = 0; i < targets.length; i++) {
-			totalItemsOnBoard+= targets[i].getItemsCarried();
+		int totalItemsOnBoard = 0;
+		// loop to sum global items to check for reckless threshold
+		for (int i = 0; i < targets.length; i++) {
+			totalItemsOnBoard += targets[i].getItemsCarried();
 		}
-		
+
+		// priority 1 reckless abandon global items 10 or more
 		if (totalItemsOnBoard >= 10) {
 			SurvivorInfoRecord recklessTarget = targets[0];
-
+			// loop to find highest item count
 			for (int i = 1; i < targets.length; i++) {
+				// check if candidate has more items
 				if (targets[i].getItemsCarried() > recklessTarget.getItemsCarried()) {
 					recklessTarget = targets[i];
 				} 
+				// check for closer distance on tie
 				else if (targets[i].getItemsCarried() == recklessTarget.getItemsCarried()) {
 					int distToCurrent = calculateManhattanDistance(this.getStreet(), this.getAvenue(), targets[i].getStreet(), targets[i].getAvenue());
 					int distToReckless = calculateManhattanDistance(this.getStreet(), this.getAvenue(), recklessTarget.getStreet(), recklessTarget.getAvenue());
 
+					// check distance comparison
 					if (distToCurrent < distToReckless) {
 						recklessTarget = targets[i];
 					}
@@ -192,24 +213,56 @@ public class ZombieRobot extends GameRobot {
 			return recklessTarget;
 		}
 
+		// priority 2 point blank override distance 1
+		SurvivorInfoRecord pointBlankTarget = null;
+		// loop to check point blank conditions
 		for (int i = 0; i < targets.length; i++) {
-			SurvivorInfoRecord candidate = targets[i];
-			int distToCandidate = calculateManhattanDistance(this.getStreet(), this.getAvenue(), candidate.getStreet(), candidate.getAvenue());
-			int distToBest = calculateManhattanDistance(this.getStreet(), this.getAvenue(), bestTarget.getStreet(), bestTarget.getAvenue());
+			int distToCandidate = calculateManhattanDistance(this.getStreet(), this.getAvenue(), targets[i].getStreet(), targets[i].getAvenue());
 
-			if (candidate.getItemsCarried() >= 3 && distToCandidate <= 4 && distToBest > 1) {
-				bestTarget = candidate;
-			}
-
+			// check exact adjacent distance
 			if (distToCandidate == 1) {
-				if (distToBest > 1 || (distToBest == 1 && candidate.getItemsCarried() > bestTarget.getItemsCarried())) {
-					bestTarget = candidate;
+				// prioritize highest item count if multiple targets are adjacent
+				if (pointBlankTarget == null || targets[i].getItemsCarried() > pointBlankTarget.getItemsCarried()) {
+					pointBlankTarget = targets[i];
 				}
 			}
 		}
-		
-		//output to prove highest score is chosen (also uncomment the corresponding line in the method insertionSortTargets)
-		//System.out.println("the best target is: " + bestTarget.getId());
+
+		// check if point blank target was found
+		if (pointBlankTarget != null) {
+			return pointBlankTarget;
+		}
+
+		// priority 3 greedy override items 3 or more and distance 8 or less
+		SurvivorInfoRecord greedyTarget = null;
+		// loop to check greedy conditions
+		for (int i = 0; i < targets.length; i++) {
+			int distToCandidate = calculateManhattanDistance(this.getStreet(), this.getAvenue(), targets[i].getStreet(), targets[i].getAvenue());
+
+			// check item and distance thresholds
+			if (targets[i].getItemsCarried() >= 3 && distToCandidate <= 8) {
+				// prioritize highest item count break ties by closest distance
+				if (greedyTarget == null || targets[i].getItemsCarried() > greedyTarget.getItemsCarried()) {
+					greedyTarget = targets[i];
+				} 
+				// check distance tie breaker
+				else if (targets[i].getItemsCarried() == greedyTarget.getItemsCarried()) {
+					int distToGreedy = calculateManhattanDistance(this.getStreet(), this.getAvenue(), greedyTarget.getStreet(), greedyTarget.getAvenue());
+
+					// check distance comparison
+					if (distToCandidate < distToGreedy) {
+						greedyTarget = targets[i];
+					}
+				}
+			}
+		}
+
+		// check if greedy target was found
+		if (greedyTarget != null) {
+			return greedyTarget;
+		}
+
+		// priority 4 mathematical winner
 		return bestTarget;
 	}
 
@@ -218,20 +271,19 @@ public class ZombieRobot extends GameRobot {
 	 * @param arr target array to be processed
 	 */
 	private void insertionSortTargets(SurvivorInfoRecord[] arr) {
+		// loop to sort array
 		for(int i = 1; i < arr.length; i++) {
 			SurvivorInfoRecord key = arr[i];
 			double keyScore = calculateTargetScore(key);
 			int j = i - 1;
 
+			// loop to shift elements
 			while (j >= 0 && calculateTargetScore(arr[j]) > keyScore) {
 				arr[j + 1] = arr[j];
 				j = j - 1; 
 			}
 			arr[j+1] = key;
 		}
-
-		// loop to verify mathematical sorting order during testing (also uncomment the corresponding line in the method situationalOverride)
-		// for (int k = 0; k < arr.length; k++) { System.out.println("rank " + k + " target id " + arr[k].getId() + " score " + calculateTargetScore(arr[k])); }
 	}
 
 	/**
@@ -253,19 +305,24 @@ public class ZombieRobot extends GameRobot {
 	 * @param state array containing all robot info
 	 */
 	private void updateLearning(RobotInfoRecord[] state) {
+		// check if valid attack occurred
 		if(currentTargetId != -1 && lastIntent.equals(TurnAction.INFECT)) {
 			boolean targetStillAlive = false;
 
+			// loop to find target
 			for(int i = 0; i < state.length; i++) {
+				// check if target matches and is alive
 				if(state[i] != null && state[i].getId() == currentTargetId && !state[i].getIsZombie()) {
 					targetStillAlive = true;
 					break; 
 				}
 			}
 
+			// check alive status
 			if(targetStillAlive) {
 				estimatedEvadeStats[currentTargetId] += 25;
 
+				// check cap limit
 				if (estimatedEvadeStats[currentTargetId] > 100) {
 					estimatedEvadeStats[currentTargetId] = 100;
 				}
