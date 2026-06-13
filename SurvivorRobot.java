@@ -9,6 +9,7 @@ public class SurvivorRobot extends GameRobot {
 	private int baseSpeed;
 	private int currentItems;
 	private int dangerRadius;
+	private int[] dodgeMemory;
 	
 
 	/**
@@ -28,6 +29,7 @@ public class SurvivorRobot extends GameRobot {
 		this.baseSpeed = speed;
 		this.currentItems = 0; 
 		this.dangerRadius = 3;
+		this.dodgeMemory = new int[20];
 	}
 
 	/**
@@ -70,7 +72,10 @@ public class SurvivorRobot extends GameRobot {
 	 * callback method so the main can tell us we survived an attack
 	 * allows the Survivor to learn based on whether or not is dodged an attack and become more/less "confident"
 	 */
-	public void registerSuccessfulDodge() {
+	public void registerSuccessfulDodge(int zombieId) {
+		
+		this.dodgeMemory[zombieId]++;
+		
 		if (this.dangerRadius > 1) {
 			this.dangerRadius++;
 			System.out.println("Survivor " + this.id + " learned from the attack. Danger radius increased to " + this.dangerRadius);
@@ -171,7 +176,8 @@ public class SurvivorRobot extends GameRobot {
 								
 								// calculate the threat score of this zombie from the perspective of this new spot
 								double baseThreat = distanceToZombie / Math.max(1, state[i].getSpeed());
-								int dodges = state[i].getDodges();
+								int zombieId = state[i].getId();
+								int dodges = this.dodgeMemory[zombieId];
 								double dodgeChance = Math.min(0.99, 0.5 + (0.1 * dodges));
 								
 								double spotThreatScore = baseThreat / (1 - dodgeChance);
@@ -183,7 +189,7 @@ public class SurvivorRobot extends GameRobot {
 							}
 						}
 						
-						// add it to our list of choices (the spotThreatScore is now the threat score of the worst zombie)
+						// add it to our list of choices (the safetyScore is now the threat score of the worst zombie)
 						possibleSpots[spotCount] = new EscapePoints(s, a, lowestThreatScore);
 						spotCount++;
 					}
@@ -234,7 +240,8 @@ public class SurvivorRobot extends GameRobot {
 				double baseThreat = distance / Math.max(1,  state[i].getSpeed());
 				
 				// get the dodge count
-				int dodges = state[i].getDodges();
+				int zombieId = state[i].getId();
+				int dodges = this.dodgeMemory[zombieId];
 				
 				// calculate the dodgeing percentage
 				double dodgeChance = Math.min(0.99, 0.5 + (0.1 * dodges));
