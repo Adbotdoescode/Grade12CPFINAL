@@ -1,7 +1,5 @@
 package final_project_2026;
 
-import java.util.ArrayList;
-
 import becker.robots.*;
 
 public class SurvivorRobot extends GameRobot {
@@ -279,11 +277,4 @@ public class SurvivorRobot extends GameRobot {
 		// returning null for the role for right now
 		return "SURVIVOR";
 	}
-
-	@Override
-	public TurnAction takeTurn(RobotInfoRecord[] state, ArrayList<ZombieInfoRecord> zombieRecords) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-	
 }
