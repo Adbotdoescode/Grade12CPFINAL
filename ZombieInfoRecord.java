@@ -48,38 +48,70 @@ public class ZombieInfoRecord extends RobotInfoRecord {
 	}
     
 	
+	/**
+	 * Getter method for totalUndesirability
+	 * @return - returns the double value for totalUndesirability
+	 */
 	public double getTotalUndesirability() { 
 		return this.undesirability;
 	}
 	
+	
+	/**
+	 * This method is used to increase dodges by 1
+	 */
 	public void increaseDodges () {
 		this.dodges += 1;
 	}
 	
+	/**
+	 * Getter method for totalAttacks
+	 * @return - returns the attribute totalAttacks
+	 */
 	public int getTotalAttacks () {
 		return this.totalAttacks;
 	}
 	
+	/**
+	 * Increased the value of totalAttacks by 1
+	 */
 	public void increaseTotalAttacks () {
 		this.totalAttacks += 1;
 	}
 	
+	/**
+	 * Getter method for the attribute dodges
+	 * @return - returns the int value for dodges
+	 */
 	public int getTotalDodges () {
 		return this.dodges;
 	}
 	
+	/** getter method for the attribute dodgeAbility
+	 * @return - returns the double value for dodgeAbility
+	 */
 	public double getDodgeAbility() {
 		return this.dodgeAbility;
 	}
 	
+	/**
+	 * Setter method for the attribute dodgeAbility
+	 * @param dodgeAbility - the double value that you want to be set for the attribute dodgeAbility
+	 */
 	public void setDodgeAbility(double dodgeAbility) { 
 		this.dodgeAbility = dodgeAbility;
 	}
 	
+	/** - setter method for the attribute dodges
+	 * @param dodges - the int value that you want to be set for the attribute dodges
+	 */
 	public void setTotalDodges(int dodges) {
 		this.dodges = dodges;
 	}
 	
+	/** setter method for the attribute totalAttacks
+	 * @param totalAttacks - the int value that you want to be set for the attribute totalAttacks
+	 */
 	public void setTotalAttacks(int totalAttacks) {
 		this.totalAttacks = totalAttacks;
 	}
