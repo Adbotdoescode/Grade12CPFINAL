@@ -10,23 +10,29 @@ public class RobotInfoRecord {
     private int safeSpotStreet;
     private int itemsCarried;
     private boolean isZombie;
+    private int dodges;
     
     // constructor to set data and intialize record
-    public RobotInfoRecord(int id, int street, int avenue, int speed, boolean isZombie, int itemsCarried) {
+    public RobotInfoRecord(int id, int street, int avenue, int speed, boolean isZombie, int itemsCarried, int dodges) {
         this.id = id;
         this.street = street;
         this.avenue = avenue;
         this.speed = speed;
         this.isZombie = isZombie;
         this.itemsCarried = itemsCarried;
+        this.dodges = dodges;
     }
     
-    public RobotInfoRecord(int id2, int street2, int avenue2, double speed2, boolean zombie) {
-        this.street = street;
-        this.avenue = avenue;
-        this.speed = speed;
-        this.isZombie = isZombie;
+    public RobotInfoRecord(int id, int street, int avenue, double speed, boolean isZombie, int dodges) {
+        this.id        = id;
+        this.street    = street;
+        this.avenue    = avenue;
+        this.speed     = (int) speed;
+        this.isZombie  = isZombie;
+        this.itemsCarried = 0;
+        this.dodges = dodges;
     }
+    
 	public int getId() {
         return this.id;
     }
@@ -49,5 +55,9 @@ public class RobotInfoRecord {
     
     public int getItemsCarried() {
         return this.itemsCarried;
+    }
+    
+    public int getDodges() {
+    		return this.dodges;
     }
 }
