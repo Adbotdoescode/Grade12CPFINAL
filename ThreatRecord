@@ -1,0 +1,24 @@
+package final_project_2026;
+
+/**
+ * a custom record for the SurvivorRobot to sort zombies
+ */
+
+public class ThreatRecord extends RobotInfoRecord {
+	
+	// the specific data that the survivor needs to make decisions 
+	
+	private double threatScore; 
+	
+	public ThreatRecord(int id, int street, int avenue, int speed, boolean isZombie, double threatScore, int dodges) {
+		// pass the standard 5 variables up to RobotInfoRecord
+		super(id, street, avenue, speed, isZombie, 0, dodges); 
+		
+		// store the thing specific to Survivor
+		this.threatScore = threatScore;
+	}
+	
+	public double getThreatScore() {
+		return this.threatScore;
+	}
+}
