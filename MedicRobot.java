@@ -26,7 +26,7 @@ public class MedicRobot extends GameRobot {
 	public MedicRobot(City c, int st, int ave, Direction dir, int id, int speed, boolean isZombie, int playerCount) {
 		super(c, st, ave, dir, id, speed, isZombie);
 		this.setColor(Color.WHITE);
-		this.setLabel(" ID " + this.id); 
+		// this.setLabel(" ID " + this.id); 
 		zombieRecords = new ZombieInfoRecord[playerCount]; 
 	}
 
