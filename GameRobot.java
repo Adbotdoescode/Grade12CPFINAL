@@ -1,6 +1,5 @@
 package final_project_2026;
 
-import java.util.ArrayList;
 
 import becker.robots.*;
 
@@ -20,7 +19,6 @@ public abstract class GameRobot extends RobotSE {
 	}
 	public abstract TurnAction takeTurn(RobotInfoRecord[] state);
 
-//	public abstract RobotInfoRecord generateRecord();
 
 	protected double calculateDistance(int targetStreet, int targetAvenue) {
 		int horizontalDistance = targetAvenue - this.getAvenue();
@@ -50,5 +48,12 @@ public abstract class GameRobot extends RobotSE {
      * @return string the role of the robot
      */
     public abstract String getRole();
+    
+    /**
+     * empty base method so survivors can learn from dodges polymorphically
+     */
+    public void registerSuccessfulDodge() {
+    	// default does nothing, overridden in SurvivorRobot
+    }
     
 }
