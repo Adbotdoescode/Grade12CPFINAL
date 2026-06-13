@@ -7,7 +7,7 @@ import becker.robots.City;
 import becker.robots.Direction;
 
 /**
- * This class defines the medic robot whose goal is to heal other robots when there are more zombies than survivors and help gather things when there are more survivors than zombies
+ * This class defines the medic robot which heals other zombies through sorting by speed, distance and dodgeAbility (a learned attribute)
  * @author ayyan
  * @version May 25 2026
  */
@@ -35,7 +35,6 @@ public class MedicRobot extends GameRobot {
 	private int lastTargetStreet;
 	private int lastTargetAvenue;
 	private int lastTargetZombie;
-	private int hitPoints;
 	double dodgeAbility = 0;
 	int totalDodges = 0; 
 	int totalAttacks = 0;
@@ -117,16 +116,16 @@ public class MedicRobot extends GameRobot {
 					if (zombieRecords[i].getIsZombie() == true) {
 						zombieRecords[i].increaseDodges();
 						zombieRecords[i].increaseTotalAttacks(); 
-						zombieRecords[i].setDodgeAbility(zombieRecords[i].getTotalDodges() / zombieRecords[i].getTotalAttacks()); 
+						zombieRecords[i].setDodgeAbility((double) zombieRecords[i].getTotalDodges() / (double) zombieRecords[i].getTotalAttacks()); 
 
 					}
 					else  {
 						zombieRecords[i].increaseTotalAttacks();
-						zombieRecords[i].setDodgeAbility(zombieRecords[i].getTotalDodges() / zombieRecords[i].getTotalAttacks());; 
+						zombieRecords[i].setDodgeAbility((double) zombieRecords[i].getTotalDodges() / (double) zombieRecords[i].getTotalAttacks());
 					}
 
 			}
-		}
+		} 
 
 		// Loop over the length of zombieRecords and determine totalUndesirability by passing the distance, speed, and dodgeAbility into the calculatePreferability method
 		for (int i = 0; i < zombieRecords.length; i++) { 
@@ -158,10 +157,10 @@ public class MedicRobot extends GameRobot {
 
 // 			DEBUG STATEMENT TO CHECK SELECTION SORT
 //			for (int i = 0; i < zombieRecords.length; i++ ) { 
-//				System.out.println("Zombie ID: " + zombieRecords[i].getId() + "TOTAL PREFERABILITY: " + zombieRecords[i].getTotalUndesirability() + " ISZOMBIE: " + zombieRecords[i].getIsZombie());
+//				System.out.println("Zombie ID: " + zombieRecords[i].getId() + " TOTAL UNDESIRABILITY: " + zombieRecords[i].getTotalUndesirability() + " ISZOMBIE: " + zombieRecords[i].getIsZombie());
 //			}
 
-
+   
 			// Loop over the entire length of zombieRecords. Since zombieRecords contains both survivors and zombies sorted, this loop will find the first ZOMBIE with the smallest undesirablity number
 			for (int j = 0; j < zombieRecords.length; j++) { 
 				// if the record at index j is a zombie and is not the medic itself, then that is the zombie with the least undesirability. This zombie is then used to set the target avenue, target street and target bot
