@@ -14,7 +14,7 @@ import java.awt.Color;
 public class OutbreakApp {
 
 	private static boolean isGameOver = false;
-	private static int targetThingsToWin = 25; 
+	private static int targetThingsToWin = 15; 
 	private static int currentThingsCollected = 0;
 	private static int totalTurns = 0; 
 
@@ -22,7 +22,7 @@ public class OutbreakApp {
 	private static int startingZombieCount = 5;
 	private static int maxThings;
 	private static int currentThingsOnBoard = 0;
-	private static final int MEDIC_SPEED = 12;
+	private static final int MEDIC_SPEED = 20;
 
 	private static final Random rand = new Random();
 	
@@ -212,7 +212,7 @@ public class OutbreakApp {
 				System.out.println("survivor successfully dodged infection " + defenderRoll + " vs " + attackerRoll);
 				
 				if (defender.getRole().equals("SURVIVOR")) {
-					defender.registerSuccessfulDodge();
+					((SurvivorRobot)defender).registerSuccessfulDodge(attacker.getId());
 				}
 			}
 		}
