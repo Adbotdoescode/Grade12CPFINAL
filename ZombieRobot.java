@@ -209,7 +209,7 @@ public class ZombieRobot extends GameRobot {
 		}
 		
 		//output to prove highest score is chosen (also uncomment the corresponding line in the method insertionSortTargets)
-		System.out.println("the best target is: " + bestTarget.getId());
+		//System.out.println("the best target is: " + bestTarget.getId());
 		return bestTarget;
 	}
 
