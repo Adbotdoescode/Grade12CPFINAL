@@ -9,16 +9,24 @@ public class ThreatRecord extends RobotInfoRecord {
 	// the specific data that the survivor needs to make decisions 
 	
 	private double threatScore; 
+	private int dodges;
 	
 	public ThreatRecord(int id, int street, int avenue, int speed, boolean isZombie, double threatScore, int dodges) {
 		// pass the standard 5 variables up to RobotInfoRecord
-		super(id, street, avenue, speed, isZombie, 0, dodges); 
+		super(id, street, avenue, speed, isZombie, 0); 
 		
 		// store the thing specific to Survivor
 		this.threatScore = threatScore;
+		this.dodges = dodges;
 	}
+	
 	
 	public double getThreatScore() {
 		return this.threatScore;
 	}
+	
+	public int getDodges() {
+		return this.dodges;
+	}
+	
 }
