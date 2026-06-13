@@ -1,0 +1,17 @@
+package final_project_2026;
+
+/**
+ * 	a helper class to store and sort the intersections around the Survivor 
+ */
+
+public class EscapePoints {
+	int street; 
+	int avenue;
+	double safetyScore; 
+
+	public EscapePoints(int street, int avenue, double safetyScore) {
+		this.street = street;
+		this.avenue = avenue;
+		this.safetyScore = safetyScore;
+	}
+}
